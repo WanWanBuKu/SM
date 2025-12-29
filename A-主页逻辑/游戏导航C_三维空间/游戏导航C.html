@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏导航</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background-color: #0f172a; /* 深蓝灰背景 */
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 40%);
+            min-height: 100vh;
+            padding: 25px 15px;
+            color: #e2e8f0;
+        }
+        
+        .container { max-width: 1100px; margin: 0 auto; position: relative; z-index: 1; }
+        
+        header { text-align: center; margin-bottom: 30px; }
+        h1 { 
+            font-size: 2rem; 
+            color: #f8fafc; 
+            font-weight: 800; 
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+        }
+        .subtitle { font-size: 0.95rem; color: #94a3b8; margin-top: 8px; font-weight: 300; }
+        
+        .tools-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 16px; 
+            margin-bottom: 30px; 
+        }
+        
+        .tool-card { 
+            background: rgba(30, 41, 59, 0.6); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 12px;
+            padding: 16px 12px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tool-card:hover { 
+            background: rgba(30, 41, 59, 0.9);
+            transform: translateY(-5px);
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 10px 30px -10px rgba(56, 189, 248, 0.3);
+        }
+        
+        .tool-icon { 
+            font-size: 2rem; 
+            margin-bottom: 10px; 
+            filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));
+        }
+        
+        .tool-number { 
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8; 
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: monospace;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        
+        .tool-name { 
+            font-size: 1rem; 
+            font-weight: 600; 
+            color: #f1f5f9; 
+            margin-bottom: 6px; 
+        }
+        
+        .tool-description { 
+            font-size: 0.8rem; 
+            color: #94a3b8; 
+            line-height: 1.4; 
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .pagination { display: flex; justify-content: center; gap: 10px; margin: 30px 0; }
+        .pagination button { 
+            padding: 8px 16px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.6);
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .pagination button:hover:not(:disabled) { 
+            background: #38bdf8;
+            color: #0f172a;
+            border-color: #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+        .pagination button:disabled { opacity: 0.3; cursor: not-allowed; border-color: transparent; }
+        .pagination .active { 
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+        
+        .stats { 
+            text-align: center;
+            padding: 12px;
+            color: #64748b;
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            margin-top: 20px;
+        }
+        
+        .error-modal { 
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .error-modal.show { display: flex; }
+        .error-content { 
+            background: #1e293b;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .error-content h3 { color: #ef4444; margin-bottom: 10px; }
+        .error-content p { color: #94a3b8; margin-bottom: 20px; font-size: 0.95rem; }
+        .error-content button { 
+            padding: 8px 24px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .error-content button:hover { background: #dc2626; }
+        
+        @media (max-width: 600px) { 
+            body { padding: 15px 10px; }
+            h1 { font-size: 1.6rem; }
+            .tools-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+            .tool-card { padding: 12px 8px; border-radius: 8px; }
+            .tool-icon { font-size: 1.5rem; margin-bottom: 6px; }
+            .tool-number { padding: 1px 6px; font-size: 0.7rem; }
+            .tool-name { font-size: 0.85rem; }
+            .tool-description { font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1> 3D游戏对战大厅</h1>
+            <p class="subtitle">尝试 · 猜想 · 新奇</p>
+        </header>
+        <main>
+            <div class="tools-grid" id="toolsGrid"></div>
+            <div class="pagination" id="pagination"></div>
+        </main>
+        <div class="stats">
+            系统收录 <span id="toolCount" style="color: #38bdf8; font-weight: bold;">0</span> 款游戏
+        </div>
+    </div>
+    
+    <div class="error-modal" id="errorModal">
+        <div class="error-content">
+            <h3>⚠️ 系统错误</h3>
+            <p id="errorMessage">配置文件加载失败</p>
+            <button onclick="closeErrorModal()">返回</button>
+        </div>
+    </div>
+    
+    <!-- 引入配置文件 -->
+    <script src="游戏-config.js"></script>
+    
+    <script>
+        // 定义全局变量
+        let currentPage = 1;
+        const itemsPerPage = 12;
+        let allTools = [];
+        let totalPages = 1;
+        
+        function showErrorModal(msg) {
+            console.error("Error:", msg); // 打印错误到控制台方便调试
+            document.getElementById('errorMessage').textContent = msg;
+            document.getElementById('errorModal').classList.add('show');
+        }
+        
+        function closeErrorModal() {
+            document.getElementById('errorModal').classList.remove('show');
+        }
+        
+        function initTools() {
+            // 检查配置是否存在
+            if (typeof window.toolsConfig === 'undefined') {
+                showErrorModal('找不到核心配置文件，请确保"游戏-config.js"在同级目录下');
+                return;
+            }
+            if (typeof window.toolsConfig.getAllTools !== 'function') {
+                showErrorModal('配置文件数据格式错误');
+                return;
+            }
+            
+            try {
+                allTools = window.toolsConfig.getAllTools();
+                if (!Array.isArray(allTools)) {
+                    throw new Error("配置数据不是数组");
+                }
+                
+                totalPages = Math.ceil(allTools.length / itemsPerPage);
+                document.getElementById('toolCount').textContent = allTools.length;
+                renderTools();
+                renderPagination();
+            } catch (e) {
+                showErrorModal('数据解析异常: ' + e.message);
+            }
+        }
+        
+        function renderTools() {
+            const grid = document.getElementById('toolsGrid');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageTools = allTools.slice(start, end);
+            
+            grid.innerHTML = pageTools.map((tool, i) => {
+                const idx = start + i;
+                return `<a href="${tool.file}" class="tool-card" target="_blank">
+                    <span class="tool-number">#${idx + 1}</span>
+                    <span class="tool-icon">${tool.icon}</span>
+                    <div class="tool-name">${tool.name}</div>
+                    <div class="tool-description">${tool.description}</div>
+                </a>`;
+            }).join('');
+        }
+        
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            if (totalPages <= 1) { 
+                pagination.innerHTML = ''; 
+                return; 
+            }
+            
+            let html = `<button ${currentPage === 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">上一页</button>`;
+            
+            const maxVisible = 5;
+            let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let end = Math.min(totalPages, start + maxVisible - 1);
+            if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
+            
+            for (let i = start; i <= end; i++) {
+                html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+            html += `<button ${currentPage === totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">下一页</button>`;
+            pagination.innerHTML = html;
+        }
+        
+        function goToPage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderTools();
+                renderPagination();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
+        // 页面加载完成后执行
+        window.addEventListener('load', initTools);
+    </script>
+</body>
+</html>

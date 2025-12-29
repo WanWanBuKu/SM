@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>应用导航</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+            padding-top: 15px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 400;
+        }
+
+        /* 右上角按钮组 */
+        .top-buttons {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .top-btn {
+            padding: 5px 12px;
+            border-radius: 16px;
+            background: #3a7bd5;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+            color: white;
+            font-weight: 500;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .top-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            background: #4a8be5;
+        }
+
+        .top-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 添加弹窗 */
+        #add-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #add-modal.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        #add-modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-btn.confirm {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .modal-btn.cancel {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* 紧凑的网格布局 */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+        }
+
+        /* 紧凑的卡片样式 */
+        .tool-card {
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            height: 100%;
+            min-height: 120px;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .tool-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08));
+        }
+
+        .tool-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .tool-desc {
+            font-size: 0.7rem;
+            color: #999;
+            line-height: 1.2;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* iframe 容器 */
+        #iframe-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #iframe-container.active {
+            display: block;
+            opacity: 1;
+        }
+
+        #site-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        /* 返回按钮 */
+        #back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            z-index: 1001;
+            display: none;
+            opacity: 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        #back-button.show {
+            display: block;
+            opacity: 1;
+        }
+
+        #back-button:hover {
+            background: white;
+            transform: scale(1.05);
+        }
+
+        /* 底部提示 */
+        .footer-notice {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            text-align: center;
+            padding: 6px 0;
+            font-size: 0.75rem;
+            z-index: 999;
+            backdrop-filter: blur(5px);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .tools-grid {
+                gap: 10px;
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .tool-card {
+                padding: 15px 12px;
+                min-height: 120px;
+            }
+            
+            .tool-icon {
+                font-size: 1.8rem;
+            }
+            
+            .tool-name {
+                font-size: 0.8rem;
+            }
+            
+            .tool-desc {
+                font-size: 0.7rem;
+            }
+
+            .top-buttons {
+                top: 8px;
+                right: 8px;
+                gap: 6px;
+            }
+
+            .top-btn {
+                padding: 4px 10px;
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 15px 10px;
+            }
+            
+            header {
+                margin-bottom: 25px;
+                padding-top: 5px;
+            }
+            
+            h1 {
+                font-size: 1.3rem;
+            }
+            
+            .subtitle {
+                font-size: 0.8rem;
+            }
+
+            .tools-grid {
+                gap: 8px;
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .tool-card {
+                padding: 14px 10px;
+                min-height: 120px;
+            }
+            
+            .tool-icon {
+                font-size: 1.7rem;
+                margin-bottom: 8px;
+            }
+            
+            .tool-name {
+                font-size: 0.75rem;
+            }
+            
+            .tool-desc {
+                font-size: 0.65rem;
+            }
+
+            .top-buttons {
+                top: 6px;
+                right: 6px;
+                gap: 5px;
+            }
+
+            .top-btn {
+                padding: 3px 8px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 右上角按钮组 -->
+    <div class="top-buttons">
+        <button class="top-btn" onclick="window.location.href='/B-导航逻辑/1.工具导航/C.日记中心/2_随身博客.html'">跳转博客</button>
+        <button class="top-btn" onclick="openModal()">添加网站</button>
+    </div>
+
+    <!-- 添加弹窗 -->
+    <div id="add-modal">
+        <div class="modal-content">
+            <div class="modal-title">添加网站</div>
+            <div class="form-group">
+                <label>网站名称</label>
+                <input type="text" id="site-name" placeholder="例如：百度">
+            </div>
+            <div class="form-group">
+                <label>网站链接</label>
+                <input type="url" id="site-url" placeholder="例如：https://www.baidu.com">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+                <button class="modal-btn confirm" onclick="confirmAdd()">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>📱 应用聚合</h1>
+            <p class="subtitle">精选应用平台，快速下载安装</p>
+        </header>
+        <main>
+            <div class="tools-grid" id="toolsGrid"></div>
+        </main>
+    </div>
+
+    <!-- iframe 全屏容器 -->
+    <div id="iframe-container">
+        <iframe id="site-iframe" src="" allowfullscreen allow="fullscreen *;picture-in-picture *"></iframe>
+    </div>
+
+    <!-- 返回按钮 -->
+    <button id="back-button">←</button>
+
+    <!-- 底部提示 -->
+    <div class="footer-notice">此为第三方网站，请不要相信广告，内容与作者无关</div>
+
+    <!-- 引入配置文件 -->
+    <script src="10_应用导航.js"></script>
+    
+    <script>
+        // 自定义网站存储
+        let customSites = JSON.parse(localStorage.getItem('customSites') || '[]');
+
+        // 打开添加弹窗
+        function openModal() {
+            document.getElementById('add-modal').classList.add('active');
+            document.getElementById('site-name').focus();
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('add-modal').classList.remove('active');
+            document.getElementById('site-name').value = '';
+            document.getElementById('site-url').value = '';
+        }
+
+        // 确认添加
+        function confirmAdd() {
+            const name = document.getElementById('site-name').value.trim();
+            const url = document.getElementById('site-url').value.trim();
+
+            if (!name || !url) {
+                alert('请填写完整的名称和链接');
+                return;
+            }
+
+            // 添加到自定义网站列表
+            customSites.push({
+                name: name,
+                url: url,
+                icon: '🔗',
+                description: '自定义网站'
+            });
+
+            // 保存到本地存储
+            localStorage.setItem('customSites', JSON.stringify(customSites));
+
+            // 重新渲染
+            initTools();
+            closeModal();
+        }
+
+        // 初始化工具列表
+        function initTools() {
+            if (typeof window.magnetConfig === 'undefined') {
+                console.error('配置文件加载失败');
+                return;
+            }
+
+            const sites = window.magnetConfig.getAllSites();
+            const allSites = [...sites, ...customSites];
+            renderTools(allSites);
+        }
+
+        // 渲染工具
+        function renderTools(sites) {
+            const toolsGrid = document.getElementById('toolsGrid');
+            toolsGrid.innerHTML = sites.map(site => `
+                <div class="tool-card" onclick="openSite('${site.url}')">
+                    <span class="tool-icon">${site.icon}</span>
+                    <div>
+                        <div class="tool-name">${site.name}</div>
+                        <div class="tool-desc">${site.description || ''}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 打开网站
+        function openSite(url) {
+            const iframeContainer = document.getElementById('iframe-container');
+            const siteIframe = document.getElementById('site-iframe');
+            const backButton = document.getElementById('back-button');
+
+            siteIframe.src = 'about:blank';
+            iframeContainer.classList.add('active');
+            backButton.classList.add('show');
+
+            setTimeout(() => {
+                siteIframe.src = url;
+            }, 100);
+        }
+
+        // 关闭iframe
+        function closeIframe() {
+            const iframeContainer = document.getElementById('iframe-container');
+            const siteIframe = document.getElementById('site-iframe');
+            const backButton = document.getElementById('back-button');
+
+            iframeContainer.classList.remove('active');
+            backButton.classList.remove('show');
+
+            setTimeout(() => {
+                siteIframe.src = '';
+            }, 300);
+        }
+
+        // 绑定事件
+        document.getElementById('back-button').addEventListener('click', closeIframe);
+
+        // ESC 键关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeIframe();
+                closeModal();
+            }
+        });
+
+        // 点击弹窗外部关闭
+        document.getElementById('add-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // 页面加载时初始化
+        window.addEventListener('load', initTools);
+    </script>
+</body>
+</html>

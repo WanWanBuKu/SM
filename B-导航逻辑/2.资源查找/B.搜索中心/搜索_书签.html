@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>聚合搜索中心</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;background:#0f172a;color:#fff;padding:20px}
+.bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(circle at 30%20%,rgba(99,102,241,.15)0%,transparent 50%),radial-gradient(circle at 70%80%,rgba(236,72,153,.1)0%,transparent 50%),radial-gradient(circle at 50%50%,rgba(56,189,248,.08)0%,transparent 70%);animation:float 20s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(10px,-10px)}}
+header{text-align:center;margin-bottom:30px;animation:fadeIn .8s ease}
+header h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+header p{font-size:.9rem;color:rgba(255,255,255,.6)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:900px;margin:0 auto;animation:fadeIn .8s ease .2s both}
+.card{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px 10px;text-align:center;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(236,72,153,.1));opacity:0;transition:opacity .3s}
+.card:hover{transform:translateY(-4px);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);box-shadow:0 15px 40px rgba(0,0,0,.25)}
+.card:hover::after{opacity:1}
+.card .icon{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(236,72,153,.2));border-radius:10px;margin:0 auto 10px;font-size:1.3rem;transition:all .3s}
+.card:hover .icon{transform:scale(1.1);background:linear-gradient(135deg,rgba(99,102,241,.3),rgba(236,72,153,.3))}
+.card .name{font-size:.85rem;font-weight:600;margin-bottom:4px}
+.card .desc{font-size:.65rem;color:rgba(255,255,255,.5);line-height:1.4}
+.empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:rgba(255,255,255,.5)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:640px){header h1{font-size:1.5rem}.grid{gap:8px}.card{padding:12px 6px}.card .icon{width:34px;height:34px;font-size:1.1rem}.card .name{font-size:.75rem}.card .desc{font-size:.6rem}}
+</style></head>
+<body>
+<div class="bg"></div>
+<header><h1>聚合搜索中心</h1><p>精选实用工具，一键直达</p></header>
+<div class="grid" id="grid"></div>
+<script src="搜索_nav-config.js"></script>
+<script>
+const g=document.getElementById('grid');
+if(!window.navConfig||!window.navConfig.tools?.length){g.innerHTML='<div class="empty">📦<br><br>暂无工具</div>'}
+else{g.innerHTML=window.navConfig.tools.map((t,i)=>`<div class="card" onclick="location.href='${t.file}'" style="animation:fadeIn .6s ease ${i*.08}s both"><div class="icon">${t.icon||'🔧'}</div><div class="name">${t.name}</div><div class="desc">${t.description||'点击进入'}</div></div>`).join('')}
+</script>
+</body></html>

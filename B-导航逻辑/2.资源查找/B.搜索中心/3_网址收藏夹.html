@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>极简导航</title>
+    
+  <!-- 引入缩放插件 -->
+    <script src="/B-导航逻辑/1.工具导航/C.日记中心/B.插件-跳转心灵序号.js"></script>
+    <style>
+        /* === 基础设置 === */
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --modal-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, sans-serif;
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            min-height: 100vh;
+            color: #333;
+            padding-bottom: 80px;
+            overflow-x: hidden; 
+        }
+
+        /* === 顶部 Tab === */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+        }
+
+        .tabs { display: flex; background: rgba(0,0,0,0.05); border-radius: 20px; padding: 3px; }
+
+        .tab-btn {
+            padding: 6px 20px;
+            border: none;
+            background: transparent;
+            color: #555;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 16px;
+        }
+
+        .tab-btn.active { background: #fff; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        /* === 右侧按钮组 === */
+        .right-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-btn {
+            padding: 6px 10px;
+            border: none;
+            background: rgba(255,255,255,0.4);
+            color: #555;
+            font-size: 11px;
+            border-radius: 10px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .action-btn:hover { background: rgba(255,255,255,0.6); }
+
+        /* === 主容器 === */
+        main { padding: 10px 15px; max-width: 600px; margin: 0 auto; }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* === 视图1：卡片网格 (一行5个) === */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            justify-items: center;
+        }
+
+        .grid-item {
+            background: var(--glass-bg);
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 8px;
+            width: 100%;
+            aspect-ratio: 1 / 1.1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .grid-index {
+            position: absolute; top: 2px; left: 3px; font-size: 9px; color: rgba(0,0,0,0.3); font-weight: bold;
+        }
+
+        .grid-icon { font-size: 22px; margin-bottom: 2px; }
+        
+        .grid-name {
+            font-size: 9px; text-align: center; width: 100%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px;
+        }
+
+        /* === 视图2：极简列表 === */
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0; 
+        }
+
+        .list-row {
+            white-space: nowrap;
+            overflow: visible;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #333;
+            cursor: pointer;
+            padding-left: 5px;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+        }
+        
+        .list-row span.url { color: #555; margin-left: 8px; font-family: monospace; }
+
+        /* === 分页控制 === */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 0;
+        }
+
+        .page-btn {
+            padding: 6px 14px;
+            border: none;
+            background: rgba(255,255,255,0.5);
+            color: #555;
+            font-size: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .page-btn:not(:disabled):hover { background: rgba(255,255,255,0.7); }
+
+        .page-info { font-size: 12px; color: #666; }
+
+        /* === 悬浮加号 === */
+        .fab {
+            position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px;
+            background: #fff; border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px; color: #555; border: none; cursor: pointer; z-index: 200;
+        }
+
+        /* === 弹窗通用样式 === */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(3px);
+            z-index: 300; display: none; align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: var(--modal-bg); width: 90%; max-width: 320px;
+            padding: 20px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+        .input-control {
+            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px;
+            font-size: 14px; background: #fff;
+        }
+        textarea.input-control { min-height: 150px; resize: vertical; }
+
+        .icon-select {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 15px;
+        }
+        .icon-opt {
+            height: 30px; display: flex; align-items: center; justify-content: center;
+            background: #eee; border-radius: 4px; cursor: pointer; font-size: 16px;
+        }
+        .icon-opt.selected { background: #8fd3f4; color: #fff; }
+
+        .btn-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-size: 13px; cursor: pointer; }
+        .btn-cancel { background: #eee; }
+        .btn-save { background: #333; color: #fff; }
+
+        /* 提示框 */
+        .toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: #fff; padding: 6px 12px;
+            border-radius: 20px; font-size: 12px; pointer-events: none;
+            opacity: 0; transition: opacity 0.3s; z-index: 400;
+        }
+        .toast.show { opacity: 1; }
+
+        /* 确认弹窗 */
+        .confirm-buttons {
+            display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;
+        }
+        .btn-danger { background: #ff4757; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('grid')">卡片</button>
+            <button class="tab-btn" onclick="switchTab('list')">列表</button>
+        </div>
+        <div class="right-buttons">
+            <button class="action-btn" onclick="confirmClear()">清空</button>
+            <button class="action-btn" onclick="openImportModal()">导入</button>
+            <button class="action-btn" onclick="openExportModal()">复制全部</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- 视图 1：紧凑卡片 -->
+        <section id="view-grid" class="view-section active">
+            <div id="grid-box" class="grid-container"></div>
+            <div id="grid-empty" style="text-align:center;padding:20px;color:#777;display:none;">空空如也</div>
+            <div class="pagination" id="grid-pagination"></div>
+        </section>
+
+        <!-- 视图 2：纯文本列表 -->
+        <section id="view-list" class="view-section">
+            <div id="list-box" class="list-container"></div>
+            <div id="list-empty" style="text-align:center;padding:20px;color:#777;display:none;">空空如也</div>
+            <div class="pagination" id="list-pagination"></div>
+        </section>
+    </main>
+
+    <button class="fab" onclick="openAddModal()">+</button>
+
+    <!-- 添加弹窗 -->
+    <div id="addModal" class="modal-overlay">
+        <div class="modal">
+            <div class="input-group">
+                <label>图标</label>
+                <div class="icon-select" id="icon-box"></div>
+            </div>
+            <div class="input-group">
+                <label>名称</label>
+                <input type="text" id="in-name" class="input-control" placeholder="网站名">
+            </div>
+            <div class="input-group">
+                <label>地址</label>
+                <input type="text" id="in-url" class="input-control" placeholder="https://...">
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-cancel" onclick="closeAddModal()">取消</button>
+                <button class="btn btn-save" onclick="saveData()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入弹窗 -->
+    <div id="importModal" class="modal-overlay">
+        <div class="modal">
+            <div class="input-group">
+                <label>粘贴数据（格式：序号. 名称 地址）</label>
+                <textarea id="importText" class="input-control" placeholder="1. 百度 https://www.baidu.com&#10;2. Yandex https://yandex.com"></textarea>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-cancel" onclick="closeImportModal()">取消</button>
+                <button class="btn btn-save" onclick="importData()">导入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出弹窗 -->
+    <div id="exportModal" class="modal-overlay">
+        <div class="modal">
+            <div class="input-group">
+                <label>数据预览（点击复制按钮复制全部）</label>
+                <textarea id="exportText" class="input-control" readonly></textarea>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-cancel" onclick="closeExportModal()">关闭</button>
+                <button class="btn btn-save" onclick="copyExportData()">复制</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认清空弹窗 -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal">
+            <div style="font-size:14px;color:#333;margin-bottom:15px;">确定要清空所有数据吗？此操作不可恢复。</div>
+            <div class="confirm-buttons">
+                <button class="btn btn-cancel" onclick="closeConfirmModal()">取消</button>
+                <button class="btn btn-danger" onclick="clearAllData()">确认清空</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">已复制</div>
+
+    <script>
+        const EMOJIS = ['🥳','🤢','🐼','🚀','💻','🎮','📚','🎵','📷','✈️','🍔','🏀','🐱','🌵','💡','🎁','🔥','🌈','⚡','🤖','🍓','🍉'];
+        let data = [];
+        let curIcon = '';
+        let currentTab = 'grid';
+        let gridPage = 1;
+        let listPage = 1;
+        const GRID_PER_PAGE = 45;
+        const LIST_PER_PAGE = 12;
+
+        // 分页回调函数 - 必须是全局函数
+        window.onGridPageChange = function(p) {
+            gridPage = p;
+            renderGrid();
+        };
+
+        window.onListPageChange = function(p) {
+            listPage = p;
+            renderList();
+        };
+
+        window.onload = () => {
+            const s = localStorage.getItem('nav_data');
+            if(s) {
+                data = JSON.parse(s);
+            } else {
+                // 初始化默认数据
+                data = [
+                    { name: '百度', url: 'https://www.baidu.com', icon: '🔍' },
+                    { name: 'Yandex', url: 'https://yandex.com', icon: '🧭' }
+                ];
+                localStorage.setItem('nav_data', JSON.stringify(data));
+            }
+            render();
+        };
+
+        function saveData() {
+            const name = document.getElementById('in-name').value.trim();
+            const url = document.getElementById('in-url').value.trim();
+            if(!name || !url) return alert('填完再保存');
+
+            data.push({ name, url, icon: curIcon });
+            localStorage.setItem('nav_data', JSON.stringify(data));
+            render();
+            closeAddModal();
+        }
+
+        function render() {
+            renderGrid();
+            renderList();
+        }
+
+        function renderGrid() {
+            const g = document.getElementById('grid-box');
+            g.innerHTML = '';
+
+            if(data.length === 0) {
+                document.getElementById('grid-empty').style.display = 'block';
+                document.getElementById('grid-pagination').innerHTML = '';
+                return;
+            }
+            document.getElementById('grid-empty').style.display = 'none';
+
+            const totalPages = Math.ceil(data.length / GRID_PER_PAGE);
+            if(gridPage > totalPages) gridPage = totalPages;
+            
+            const start = (gridPage - 1) * GRID_PER_PAGE;
+            const end = start + GRID_PER_PAGE;
+            const pageData = data.slice(start, end);
+
+            pageData.forEach((item, i) => {
+                const realIndex = start + i;
+                const divG = document.createElement('div');
+                divG.className = 'grid-item';
+                divG.onclick = () => window.open(item.url, '_blank');
+                divG.innerHTML = `<span class="grid-index">${realIndex+1}</span><div class="grid-icon">${item.icon}</div><div class="grid-name">${item.name}</div>`;
+                g.appendChild(divG);
+            });
+
+            renderPagination('grid', gridPage, totalPages, 'onGridPageChange');
+        }
+
+        function renderList() {
+            const l = document.getElementById('list-box');
+            l.innerHTML = '';
+
+            if(data.length === 0) {
+                document.getElementById('list-empty').style.display = 'block';
+                document.getElementById('list-pagination').innerHTML = '';
+                return;
+            }
+            document.getElementById('list-empty').style.display = 'none';
+
+            const totalPages = Math.ceil(data.length / LIST_PER_PAGE);
+            if(listPage > totalPages) listPage = totalPages;
+            
+            const start = (listPage - 1) * LIST_PER_PAGE;
+            const end = start + LIST_PER_PAGE;
+            const pageData = data.slice(start, end);
+
+            pageData.forEach((item, i) => {
+                const realIndex = start + i;
+                const divL = document.createElement('div');
+                divL.className = 'list-row';
+                divL.innerHTML = `<span style="color:#888;margin-right:5px;">${realIndex+1}.</span> ${item.name} <span class="url">${item.url}</span>`;
+                divL.onclick = () => {
+                    navigator.clipboard.writeText(`${realIndex+1}. ${item.name} ${item.url}`);
+                    showToast();
+                };
+                l.appendChild(divL);
+            });
+
+            renderPagination('list', listPage, totalPages, 'onListPageChange');
+        }
+
+        function renderPagination(type, page, total, callbackName) {
+            const container = document.getElementById(type + '-pagination');
+            if(total <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = `
+                <button class="page-btn" ${page <= 1 ? 'disabled' : ''} ${page > 1 ? `onclick="${callbackName}(${page-1})"` : ''}>上一页</button>
+                <span class="page-info">${page}/${total}</span>
+                <button class="page-btn" ${page >= total ? 'disabled' : ''} ${page < total ? `onclick="${callbackName}(${page+1})"` : ''}>下一页</button>
+            `;
+        }
+
+        function openImportModal() {
+            document.getElementById('importModal').classList.add('open');
+            document.getElementById('importText').value = '';
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('open');
+        }
+
+        function importData() {
+            const text = document.getElementById('importText').value.trim();
+            if(!text) return alert('请粘贴数据');
+
+            const lines = text.split('\n');
+            let imported = 0;
+
+            lines.forEach(line => {
+                // 格式：序号. 名称 地址
+                // 使用正则匹配：数字. 空格 名称 空格 地址
+                const match = line.match(/^\d+\.\s+(.+?)\s+(.+)$/);
+                if(match) {
+                    const name = match[1].trim();
+                    const url = match[2].trim();
+                    if(name && url) {
+                        // 随机选择一个图标
+                        const r = Math.floor(Math.random() * EMOJIS.length);
+                        data.push({ name, url, icon: EMOJIS[r] });
+                        imported++;
+                    }
+                }
+            });
+
+            if(imported > 0) {
+                localStorage.setItem('nav_data', JSON.stringify(data));
+                render();
+                closeImportModal();
+                showToast(`成功导入 ${imported} 条数据`);
+            } else {
+                alert('未识别到有效数据，格式应为：序号. 名称 地址');
+            }
+        }
+
+        function openExportModal() {
+            let exportText = '';
+            data.forEach((item, i) => {
+                exportText += `${i+1}. ${item.name} ${item.url}\n`;
+            });
+            
+            document.getElementById('exportText').value = exportText.trim();
+            document.getElementById('exportModal').classList.add('open');
+        }
+
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.remove('open');
+        }
+
+        function copyExportData() {
+            const text = document.getElementById('exportText').value;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制全部数据');
+            });
+        }
+
+        function confirmClear() {
+            if(data.length === 0) return alert('数据已为空');
+            document.getElementById('confirmModal').classList.add('open');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('open');
+        }
+
+        function clearAllData() {
+            data = [];
+            gridPage = 1;
+            listPage = 1;
+            localStorage.setItem('nav_data', JSON.stringify(data));
+            render();
+            closeConfirmModal();
+            showToast('已清空全部数据');
+        }
+
+        function switchTab(t) {
+            currentTab = t;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('view-' + t).classList.add('active');
+        }
+
+        function initIcons() {
+            const box = document.getElementById('icon-box');
+            box.innerHTML = '';
+            const r = Math.floor(Math.random() * EMOJIS.length);
+            curIcon = EMOJIS[r];
+            
+            EMOJIS.forEach(e => {
+                const d = document.createElement('div');
+                d.className = 'icon-opt' + (e === curIcon ? ' selected' : '');
+                d.innerText = e;
+                d.onclick = () => {
+                    document.querySelectorAll('.icon-opt').forEach(x => x.classList.remove('selected'));
+                    d.classList.add('selected');
+                    curIcon = e;
+                };
+                box.appendChild(d);
+            });
+        }
+
+        function openAddModal() {
+            document.getElementById('addModal').classList.add('open');
+            document.getElementById('in-name').value = '';
+            document.getElementById('in-url').value = '';
+            initIcons();
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.remove('open');
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg || '已复制';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 1500);
+        }
+
+        // 点击弹窗背景关闭
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.onclick = (e) => {
+                if(e.target === overlay) {
+                    overlay.classList.remove('open');
+                }
+            };
+        });
+    </script>
+</body>
+</html>

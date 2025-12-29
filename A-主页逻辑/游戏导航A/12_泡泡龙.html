@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>星空泡泡龙 – 严格同色消除</title>
+<style>
+    body {
+        margin: 0; padding: 0;
+        background: #000;
+        overflow: hidden;
+        font-family: "Microsoft YaHei", sans-serif;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    canvas { display: block; }
+
+    .ui-layer {
+        position: absolute;
+        color: #fff;
+        text-shadow: 0 0 5px rgba(0,0,0,0.8);
+        pointer-events: none;
+        z-index: 10;
+    }
+
+    #stats {
+        top: 10px; left: 15px;
+        font-size: 15px;
+        line-height: 1.6;
+    }
+    .highlight { color: #4ECDC4; font-weight: bold; font-size: 1.1em; }
+    .high-score-label { color: #aaa; font-size: 0.9em; }
+
+    #hint {
+        top: 10px; right: 15px;
+        font-size: 14px;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 8px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        text-align: right;
+    }
+
+    #next-ball {
+        bottom: 20px; left: 20px;
+        display: flex; align-items: center;
+        gap: 10px;
+        font-size: 16px;
+    }
+    #preview {
+        width: 30px; height: 30px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.3);
+        background: #333; /* 初始颜色 */
+        box-shadow: 0 0 10px rgba(255,255,255,0.1);
+    }
+
+    #modal {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85);
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        z-index: 20;
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.3s;
+    }
+    #modal.active { opacity: 1; pointer-events: auto; }
+    #modal h2 { font-size: 32px; margin: 0 0 10px 0; color: #FFD700; text-shadow: 0 0 15px #FFD700; }
+    #modal p { font-size: 18px; color: #ddd; margin-bottom: 30px; }
+    #modal .new-record { color: #FF6B6B; font-weight: bold; display: block; margin-top: 5px; font-size: 16px;}
+    
+    #btn-restart {
+        padding: 10px 30px;
+        font-size: 18px;
+        background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+        border: none; border-radius: 25px;
+        color: white; cursor: pointer;
+        box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        transition: transform 0.1s;
+    }
+    #btn-restart:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="stats" class="ui-layer">
+    <div>得分: <span id="score" class="highlight">0</span></div>
+    <div class="high-score-label">最高: <span id="highScore">0</span></div>
+</div>
+
+<div id="hint" class="ui-layer">
+    <div>🚀 拖动瞄准 · 点击射击</div>
+    <div style="font-size:12px; opacity:0.8; margin-top:4px;">同色2个消除</div>
+</div>
+
+<div id="next-ball" class="ui-layer">
+    <div>下一球</div>
+    <div id="preview"></div>
+</div>
+
+<div id="modal">
+    <h2 id="modal-title">游戏结束</h2>
+    <p id="modal-msg">最终得分: 0</p>
+    <button id="btn-restart">再玩一次</button>
+</div>
+
+<script>
+/**
+ * 优化说明：
+ * 1. 视觉：使用 RadialGradient 替代简单的高光点，实现立体感。
+ * 2. 存储：使用 localStorage 记录最高分。
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// UI 元素
+const uiScore = document.getElementById('score');
+const uiHighScore = document.getElementById('highScore');
+const uiLevel = document.getElementById('level'); // 虽然UI没放Level显示，但逻辑里保留了
+const uiPreview = document.getElementById('preview');
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modal-title');
+const modalMsg = document.getElementById('modal-msg');
+const btnRestart = document.getElementById('btn-restart');
+
+// 读取历史最高分
+let highScore = parseInt(localStorage.getItem('skyBubbleHighScore') || '0');
+uiHighScore.innerText = highScore;
+
+let state = {
+    width: 0, height: 0,
+    r: 0, 
+    score: 0, level: 1,
+    bubbles: [], 
+    particles: [], 
+    bullet: null, 
+    ship: { x: 0, y: 0, targetX: 0 }, 
+    nextColor: '',
+    colors: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'],
+    stars: [], 
+    isOver: false
+};
+
+/* ================= 响应式与初始化 ================= */
+
+function resize() {
+    state.width = window.innerWidth;
+    state.height = window.innerHeight;
+    canvas.width = state.width;
+    canvas.height = state.height;
+    state.r = Math.min(25, state.width / 18); 
+    state.ship.y = state.height - 60;
+    state.ship.x = state.width / 2;
+    state.ship.targetX = state.width / 2;
+}
+
+function initStars() {
+    state.stars = [];
+    for(let i=0; i<150; i++) {
+        state.stars.push({
+            x: Math.random() * state.width,
+            y: Math.random() * state.height,
+            size: Math.random() * 2,
+            speed: Math.random() * 0.5 + 0.1
+        });
+    }
+}
+
+function pickColor() {
+    return state.colors[Math.floor(Math.random() * state.colors.length)];
+}
+
+function initLevel() {
+    state.bubbles = [];
+    const rows = 4 + state.level; 
+    const cols = Math.floor(state.width / (state.r * 2)) + 1;
+    
+    for(let r=0; r<rows; r++) {
+        const isOdd = r % 2 === 1;
+        const rCols = isOdd ? cols - 1 : cols;
+        for(let c=0; c<rCols; c++) {
+            const x = c * 2 * state.r + state.r + (isOdd ? state.r : 0);
+            const y = r * state.r * 1.732 + state.r;
+            state.bubbles.push({
+                x, y, r: state.r,
+                color: pickColor(),
+                row: r, col: c,
+                alive: true
+            });
+        }
+    }
+    
+    state.nextColor = pickColor();
+    uiPreview.style.backgroundColor = state.nextColor;
+}
+
+/* ================= 核心游戏逻辑 ================= */
+
+function getGridPos(x, y) {
+    const row = Math.round((y - state.r) / (state.r * 1.732));
+    const offset = (row % 2) * state.r;
+    const col = Math.round((x - state.r - offset) / (state.r * 2));
+    return { row, col };
+}
+
+function getNeighbors(b) {
+    const offsets = b.row % 2 === 0 ? 
+        [[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]] : 
+        [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+    const neighbors = [];
+    offsets.forEach(([dr, dc]) => {
+        const target = state.bubbles.find(other => 
+            other.alive && other.row === b.row + dr && other.col === b.col + dc
+        );
+        if(target) neighbors.push(target);
+    });
+    return neighbors;
+}
+
+function findGroup(startBubble) {
+    const group = [];
+    const visited = new Set();
+    const stack = [startBubble];
+    while(stack.length > 0) {
+        const curr = stack.pop();
+        if(visited.has(curr)) continue;
+        visited.add(curr);
+        group.push(curr);
+        const neighbors = getNeighbors(curr);
+        neighbors.forEach(n => {
+            if(n.color === startBubble.color && !visited.has(n)) {
+                stack.push(n);
+            }
+        });
+    }
+    return group;
+}
+
+function shoot(tx, ty) {
+    if(state.isOver || state.bullet) return;
+    const angle = Math.atan2(ty - state.ship.y, tx - state.ship.x);
+    const speed = 12; 
+    
+    state.bullet = {
+        x: state.ship.x,
+        y: state.ship.y - 20,
+        r: state.r,
+        color: state.nextColor,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        active: true
+    };
+    
+    state.nextColor = pickColor();
+    uiPreview.style.backgroundColor = state.nextColor;
+}
+
+function checkCollision() {
+    if(!state.bullet) return;
+    const b = state.bullet;
+
+    if(b.x <= b.r || b.x >= state.width - b.r) b.vx *= -1;
+    if(b.y <= b.r) b.vy *= -1; 
+
+    let hit = null;
+    // 优化：只检查附近的泡泡可以提高性能，但在量级较小时直接遍历无妨
+    for(let bubble of state.bubbles) {
+        if(!bubble.alive) continue;
+        const dist = Math.hypot(b.x - bubble.x, b.y - bubble.y);
+        if(dist < b.r + bubble.r) {
+            hit = bubble;
+            break; 
+        }
+    }
+
+    if(hit || b.y - b.r < 0) { 
+        if(hit) {
+            const angle = Math.atan2(b.y - hit.y, b.x - hit.x);
+            b.x = hit.x + Math.cos(angle) * (b.r + hit.r - 2);
+            b.y = hit.y + Math.sin(angle) * (b.r + hit.r - 2);
+        }
+
+        const finalPos = getGridPos(b.x, b.y);
+        
+        const newBubble = {
+            x: b.x, y: b.y, r: b.r, color: b.color,
+            row: finalPos.row, col: finalPos.col, alive: true
+        };
+        state.bubbles.push(newBubble);
+
+        const group = findGroup(newBubble);
+        if(group.length >= 2) {
+            group.forEach(bb => {
+                bb.alive = false;
+                createExplosion(bb.x, bb.y, bb.color);
+            });
+            state.score += group.length * 10;
+            uiScore.innerText = state.score;
+        } else {
+            if(newBubble.y > state.height - 100) {
+                gameOver(false);
+            }
+        }
+        
+        state.bubbles = state.bubbles.filter(bb => bb.alive);
+        state.bullet = null;
+        
+        if(state.bubbles.length === 0) {
+            gameOver(true);
+        }
+    }
+}
+
+function createExplosion(x, y, color) {
+    for(let i=0; i<12; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 3 + 1;
+        state.particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1.0,
+            color: color
+        });
+    }
+}
+
+function gameOver(win) {
+    state.isOver = true;
+    
+    // 检查并保存最高分
+    let isNewRecord = false;
+    if (state.score > highScore) {
+        highScore = state.score;
+        localStorage.setItem('skyBubbleHighScore', highScore);
+        uiHighScore.innerText = highScore;
+        isNewRecord = true;
+    }
+
+    modalTitle.innerText = win ? `🎉 恭喜通关第 ${state.level} 关!` : "💔 游戏结束";
+    modalTitle.style.color = win ? "#FFD700" : "#FF6B6B";
+    
+    let scoreHtml = `最终得分: ${state.score}`;
+    if (isNewRecord) scoreHtml += `<span class="new-record">✨ 新纪录! ✨</span>`;
+    modalMsg.innerHTML = scoreHtml;
+    
+    modal.classList.add('active');
+}
+
+function restart() {
+    state.isOver = false;
+    state.score = 0;
+    state.level = 1;
+    state.bullet = null;
+    state.particles = [];
+    modal.classList.remove('active');
+    
+    uiScore.innerText = '0';
+    initLevel();
+}
+
+/* ================= 绘图逻辑 (优化版) ================= */
+
+// 绘制带有立体感的球体（去掉了假的高光点）
+function drawSphere(x, y, r, color) {
+    // 1. 基础填充
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.fill();
+
+    // 2. 创建径向渐变（模拟光照立体感）
+    // 渐变中心稍微偏左上，模拟光源
+    const grad = ctx.createRadialGradient(
+        x - r * 0.3, y - r * 0.3, r * 0.1, // 内圆（高光点）
+        x, y, r // 外圆（球体边缘）
+    );
+    
+    // 混合白色透明度实现高光和阴影过渡，而不是生硬的贴纸
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); // 中心高光
+    grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.0)'); // 中间过渡
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.2)'); // 边缘阴影
+
+    ctx.fillStyle = grad;
+    ctx.fill();
+}
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, state.width, state.height);
+
+    // 1. 星星
+    ctx.fillStyle = '#FFF';
+    state.stars.forEach(s => {
+        s.y += s.speed;
+        if(s.y > state.height) { s.y = 0; s.x = Math.random() * state.width; }
+        ctx.globalAlpha = Math.random() * 0.5 + 0.3;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+
+    // 2. 气泡 (使用新的 drawSphere)
+    state.bubbles.forEach(b => {
+        drawSphere(b.x, b.y, b.r - 1, b.color);
+    });
+
+    // 3. 飞船
+    const ship = state.ship;
+    ship.x += (ship.targetX - ship.x) * 0.2;
+    
+    ctx.fillStyle = '#4ECDC4';
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#4ECDC4';
+    ctx.beginPath();
+    ctx.moveTo(ship.x, ship.y - 20);
+    ctx.lineTo(ship.x - 20, ship.y + 15);
+    ctx.lineTo(ship.x + 20, ship.y + 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 飞船上的球 (预览)
+    if(!state.bullet) {
+        drawSphere(ship.x, ship.y, state.r, state.nextColor);
+    }
+
+    // 4. 子弹
+    if(state.bullet) {
+        const p = state.bullet;
+        drawSphere(p.x, p.y, p.r, p.color);
+        
+        if(p.active) {
+            p.x += p.vx;
+            p.y += p.vy;
+            checkCollision();
+        }
+    }
+
+    // 5. 粒子爆炸
+    for(let i=state.particles.length-1; i>=0; i--) {
+        const p = state.particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.05;
+        if(p.life <= 0) {
+            state.particles.splice(i, 1);
+        } else {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r/2, 0, Math.PI*2); 
+            ctx.fill();
+        }
+    }
+    ctx.globalAlpha = 1.0;
+
+    requestAnimationFrame(draw);
+}
+
+/* ================= 事件监听 ================= */
+
+function handleMove(x) { state.ship.targetX = Math.max(20, Math.min(state.width - 20, x)); }
+function handleClick(x, y) { 
+    if(x > canvas.width - 100 && y > canvas.height - 100) return; 
+    shoot(x, y); 
+}
+
+window.addEventListener('mousemove', e => handleMove(e.clientX));
+window.addEventListener('mousedown', e => handleClick(e.clientX, e.clientY));
+
+window.addEventListener('touchmove', e => {
+    e.preventDefault();
+    handleMove(e.touches[0].clientX);
+}, { passive: false });
+
+window.addEventListener('touchstart', e => {
+    handleMove(e.touches[0].clientX);
+    handleClick(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+window.addEventListener('resize', resize);
+btnRestart.addEventListener('click', restart);
+
+// 启动
+resize();
+initStars();
+initLevel();
+draw();
+
+</script>
+</body>
+</html>

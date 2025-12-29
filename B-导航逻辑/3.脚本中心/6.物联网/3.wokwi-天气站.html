@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MicroPython IoT Weather Station</title>
+   <script src="A.插件_横屏字体缩放.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #ffffff;
+            color: #333333;
+            padding: 10px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        .image-container {
+            width: 100%;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .image-container img {
+            width: 50%;
+            height: auto;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        
+        .code-section {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background-color: #3d3d3d;
+            border-bottom: 1px solid #4d4d4d;
+        }
+        
+        .code-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .language-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            background-color: #3572A5;
+            color: white;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        
+        .code-title {
+            font-size: 11px;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+        
+        .copy-btn {
+            background-color: #4a4a4a;
+            color: #e0e0e0;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background-color: #5a5a5a;
+        }
+        
+        .copy-btn:active {
+            background-color: #6a6a6a;
+        }
+        
+        pre {
+            margin: 0;
+            padding: 10px;
+            overflow-x: auto;
+            background-color: #2d2d2d;
+        }
+        
+        code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 10px !important;
+            line-height: 1.4 !important;
+        }
+        
+        .token.comment {
+            color: #6a9955;
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+            
+            .image-container {
+                margin-bottom: 10px;
+            }
+            
+            code {
+                font-size: 9px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="image-container">
+            <img src="https://picx.zhimg.com/100/v2-fffd5ea9920c979dc0dfa39a4d4850f3_r.jpeg?source=7e7ef6e2&needBackground=1&rawwidth=1080&rawheight=1580&customSceneCode=image_viewer" 
+                 alt="MicroPython IoT Weather Station">
+        </div>
+        
+        <div class="code-section">
+            <div class="code-header">
+                <div class="code-info">
+                    <span class="language-badge">Python</span>
+                    <span class="code-title">MicroPython IoT Weather Station</span>
+                </div>
+                <button class="copy-btn" onclick="copyCode()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    复制
+                </button>
+            </div>
+            
+            <pre><code class="language-python">""" MicroPython IoT Weather Station Example for Wokwi.com
+To view the data:
+1. Go to http://www.hivemq.com/demos/websocket-client/
+2. Click "Connect" 
+3. Under Subscriptions, click "Add New Topic Subscription"
+4. In the Topic field, type "wokwi-weather" then click "Subscribe"
+Now click on the DHT22 sensor in the simulation, change the temperature/humidity,
+and you should see the message appear on the MQTT Broker, in the "Messages" pane.
+Copyright (C) 2022, Uri Shaked
+https://wokwi.com/arduino/projects/322577683855704658 """  # [1] 项目文档字符串：说明示例的用途、使用方法和版权信息
+import network    # [2] 导入网络库，处理WiFi连接
+import time       # [3] 导入时间库，用于休眠和等待操作
+from machine import Pin   # [4] 导入机器Pin类，用于硬件引脚控制
+import dht        # [5] 导入DHT传感器库，用于读取温湿度数据
+import ujson      # [6] 导入轻量级JSON库，用于数据编码解码
+from umqtt.simple import MQTTClient   # [7] 导入简单MQTT客户端库，用于发布订阅消息
+
+# [8] 设置MQTT服务器参数配置
+MQTT_CLIENT_ID = "micropython-weather-demo"    # [8.1] 设置MQTT客户端唯一标识符
+MQTT_BROKER = "broker.mqttdashboard.com"       # [8.2] 设置MQTT代理服务器地址
+MQTT_USER = ""                                 # [8.3] 设置MQTT用户名（空表示不需要认证）
+MQTT_PASSWORD = ""                             # [8.4] 设置MQTT密码（空表示不需要认证）
+MQTT_TOPIC = "wokwi-weather"                   # [8.5] 设置MQTT主题名称，用于发布天气数据
+
+# [9] 初始化传感器：创建DHT22对象，连接到GPIO引脚15
+sensor = dht.DHT22(Pin(15))    # [9.1] 创建DHT22温湿度传感器实例，指定使用15号引脚
+
+# [10] 连接WiFi网络
+print("Connecting to WiFi", end="")    # [10.1] 打印WiFi连接开始提示
+sta_if = network.WLAN(network.STA_IF)    # [10.2] 创建WiFi站点接口对象
+sta_if.active(True)                      # [10.3] 激活WiFi功能
+sta_if.connect('Wokwi-GUEST', '')        # [10.4] 连接到Wokwi访客网络（无密码）
+while not sta_if.isconnected():    # [10.5] 等待连接建立
+    print(".", end="")    # 打印进度点表示正在连接
+    time.sleep(0.1)       # 短暂休眠避免占用CPU
+print(" Connected!")      # [10.6] 打印连接成功消息
+
+# [11] 连接MQTT服务器
+print("Connecting to MQTT server... ", end="")    # [11.1] 打印MQTT连接开始提示
+# [11.2] 创建MQTT客户端对象，传入客户端ID、代理地址和认证信息
+client = MQTTClient(MQTT_CLIENT_ID, MQTT_BROKER, user=MQTT_USER, password=MQTT_PASSWORD)
+client.connect()    # [11.3] 连接到MQTT代理服务器
+print("Connected!")  # [11.4] 打印MQTT连接成功消息
+
+# [12] 主循环：持续监测并上报天气数据
+prev_weather = ""    # [12.1] 初始化前一次天气数据为空字符串
+while True:    # [12.2] 进入无限循环持续运行
+    # [13] 测量天气条件
+    print("Measuring weather conditions... ", end="")    # [13.1] 打印测量开始提示
+    sensor.measure()    # [13.2] 触发传感器读取温湿度值
+    # [13.3] 将数据编码为JSON格式字符串
+    message = ujson.dumps({
+        "temp": sensor.temperature(),     # 获取温度值并添加到消息中
+        "humidity": sensor.humidity(),     # 获取湿度值并添加到消息中
+    })
+    
+    # [14] 检查天气数据是否变化
+    if message != prev_weather:    # [14.1] 比较当前和上一次数据
+        # [15] 发布更新
+        print("Updated!")    # [15.1] 打印更新提示
+        # [15.2] 打印发布详情
+        print("Reporting to MQTT topic {}: {}".format(MQTT_TOPIC, message))
+        client.publish(MQTT_TOPIC, message)    # [15.3] 将消息发布到MQTT主题
+        prev_weather = message                  # [15.4] 更新前次数据记录
+    else:
+        print("No change")    # [16] 打印无变化提示
+    time.sleep(1)    # [17] 暂停1秒后继续下一次测量</code></pre>
+        </div>
+    </div>
+    
+        <!-- prism.js 语法高亮 -->
+    <script src="/A2_全局中心/B_插件缓存-CDN/1.prism代码高亮/3.prism-css-白蓝主题.js"></script>   
+    <script src="/A2_全局中心/B_插件缓存-CDN/1.prism代码高亮/prism-core.min.js"></script>
+    <script src="/A2_全局中心/B_插件缓存-CDN/1.prism代码高亮/prism-python.min.js"></script>
+    
+
+
+    <script>
+        function copyCode() {
+            const codeElement = document.querySelector('code.language-python');
+            const text = codeElement.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const copyBtn = document.querySelector('.copy-btn');
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    已复制
+                `;
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+    </script>
+</body>
+</html>

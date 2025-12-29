@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>数学奖项大赏</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --surface: #1e1e1e;
+            --primary: #bb86fc;
+            --text-main: #e0e0e0;
+            --text-sub: #a0a0a0;
+            --border: #333;
+        }
+        body { 
+            margin: 0; 
+            background: var(--bg); 
+            color: var(--text-main); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            font-size: 12px; 
+            line-height: 1.3;
+            padding-bottom: 20px; 
+        }
+        
+        /* 导航栏 */
+        .nav { 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            background: var(--bg); 
+            border-bottom: 1px solid var(--border); 
+            display: flex; 
+        }
+        .nav-item { 
+            flex: 1; 
+            padding: 10px 0; 
+            text-align: center; 
+            color: var(--text-sub); 
+            cursor: pointer; 
+            border-bottom: 2px solid transparent; 
+            transition: 0.2s; 
+            font-weight: 500;
+        }
+        .nav-item.active { 
+            color: var(--primary); 
+            border-bottom-color: var(--primary); 
+            background: rgba(187, 134, 252, 0.08); 
+        }
+        
+        /* 容器 */
+        .container { padding: 5px; display: none; }
+        .container.active { display: block; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 表格样式 */
+        .table-box { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; min-width: 480px; }
+        
+        th { 
+            background: #252525; 
+            color: var(--primary); 
+            padding: 6px 4px; 
+            text-align: left; 
+            position: sticky; 
+            top: 0; 
+            font-weight: 600; 
+            white-space: nowrap; 
+            font-size: 11px;
+        }
+        
+        td { 
+            padding: 5px 4px; 
+            border-bottom: 1px solid var(--border); 
+            vertical-align: top; 
+        }
+        
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        
+        /* 列宽控制 - 年份列极度压缩 */
+        .col-year { 
+            width: 48px; 
+            color: var(--text-sub); 
+            white-space: nowrap; 
+            text-align: center; /* 居中对齐更省空间 */
+            padding-left: 2px;
+            padding-right: 2px;
+            font-size: 11px;
+        }
+        
+        .col-name { 
+            width: 85px; /* 稍微压缩名字列给描述腾空间 */
+            color: #fff; 
+            font-weight: bold; 
+            white-space: nowrap; 
+            padding-left: 6px; 
+            padding-right: 4px;
+        }
+        
+        .col-desc { 
+            color: var(--text-sub); 
+            word-break: break-word; 
+            line-height: 1.35; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav">
+        <div class="nav-item active" onclick="switchTab('abel')">阿贝尔奖</div>
+        <div class="nav-item" onclick="switchTab('fields')">菲尔兹奖</div>
+    </div>
+
+    <div id="abel-container" class="container active">
+        <div class="table-box">
+            <table id="abel-table"><thead><tr><th>年份</th><th>获奖者</th><th>贡献描述</th></tr></thead><tbody></tbody></table>
+        </div>
+    </div>
+
+    <div id="fields-container" class="container">
+        <div class="table-box">
+            <table id="fields-table"><thead><tr><th>年份</th><th>获奖者</th><th>贡献描述</th></tr></thead><tbody></tbody></table>
+        </div>
+    </div>
+
+<script>
+    // 数据源：阿贝尔奖
+    const abelData = [
+        { year: "2024", name: "米歇尔·塔拉格兰", desc: "因其在概率论方面的开创性贡献，以及对随机过程和最优传输理论的研究。" },
+        { year: "2023", name: "路易斯·卡法雷利", desc: "因其在非线性偏微分方程方面的开创性贡献。" },
+        { year: "2022", name: "丹尼斯·沙利文", desc: "因其在拓扑学，特别是代数拓扑和几何拓扑方面的开创性贡献。" },
+        { year: "2021", name: "拉斯洛·洛瓦斯<br>阿维·威格德森", desc: "因其在理论计算机科学和离散数学方面的基础性贡献。" },
+        { year: "2020", name: "希勒尔·弗斯滕贝格<br>格里戈里·马古利斯", desc: "因其在群论、数论和组合数学方面的开创性贡献。" },
+        { year: "2019", name: "卡伦·乌伦贝克", desc: "因其在几何偏微分方程、规范理论和可积系统方面的开创性成就。" },
+        { year: "2018", name: "罗伯特·朗兰兹", desc: "因提出“朗兰兹纲领”，连接了数论、表示论和分析。" },
+        { year: "2017", name: "伊夫·梅耶", desc: "因其在小波数学理论发展中的关键作用。" },
+        { year: "2016", name: "安德鲁·怀尔斯", desc: "因证明费马大定理，开启了数论的新时代。" },
+        { year: "2015", name: "约翰·纳什<br>路易斯·尼伦伯格", desc: "因其在非线性偏微分方程理论及其在几何分析中的应用方面的重大贡献。" },
+        { year: "2014", name: "雅科夫·西奈", desc: "因其在动力系统、遍历理论和数学物理方面的根本性贡献。" },
+        { year: "2013", name: "皮埃尔·德利涅", desc: "因其在代数几何方面的开创性贡献，以及对数论和表示论的影响。" },
+        { year: "2012", name: "恩德雷·塞迈雷迪", desc: "因其在离散数学和理论计算机科学方面的根本性贡献。" },
+        { year: "2011", name: "约翰·米尔诺", desc: "因其在拓扑学、几何和代数方面的开创性发现。" },
+        { year: "2010", name: "约翰·泰特", desc: "因其对数论理论的巨大而持久的影响。" },
+        { year: "2009", name: "米哈伊尔·格罗莫夫", desc: "因其在几何方面的革命性贡献。" },
+        { year: "2008", name: "约翰·汤普森<br>雅克·蒂茨", desc: "因其在代数方面的深刻成就，特别是对塑造现代群论的贡献。" },
+        { year: "2007", name: "斯里尼瓦瑟·瓦拉汉", desc: "因其在概率论方面的根本性贡献，特别是创建了统一的大偏差理论。" },
+        { year: "2006", name: "伦纳特·卡勒松", desc: "因其在调和分析和光滑动力系统理论方面的深刻和开创性贡献。" },
+        { year: "2005", name: "彼得·拉克斯", desc: "因其在偏微分方程理论及其应用方面的开创性贡献。" },
+        { year: "2004", name: "迈克尔·阿蒂亚<br>伊萨多尔·辛格", desc: "因发现并证明指标定理，连接了拓扑学、几何学和分析学。" },
+        { year: "2003", name: "让-皮埃尔·塞尔", desc: "因其在塑造现代形式的许多数学部分中的关键作用，包括拓扑学和代数几何。" }
+    ];
+
+    // 数据源：菲尔兹奖
+    const fieldsData = [
+        { year: "2022", name: "雨果·杜米尼尔-柯平", desc: "统计物理，特别是相变理论。" },
+        { year: "2022", name: "许埈珥", desc: "利用霍奇理论的组合学方法研究代数几何。" },
+        { year: "2022", name: "詹姆斯·梅纳德", desc: "解析数论，素数分布。" },
+        { year: "2022", name: "玛丽娜·维亚佐夫斯卡", desc: "球堆积问题，特别是E8格。" },
+        { year: "2018", name: "考切尔·比尔卡尔", desc: "代数几何，法诺簇的最小模型纲领。" },
+        { year: "2018", name: "阿莱西奥·菲加利", desc: "最优传输理论及其应用。" },
+        { year: "2018", name: "彼得·舒尔策", desc: "算术代数几何，完美oid空间。" },
+        { year: "2018", name: "阿克沙伊·文卡泰什", desc: "结合动力学、数论和分析学解决问题。" },
+        { year: "2014", name: "阿图尔·阿维拉", desc: "动力系统，特别是可递换系统。" },
+        { year: "2014", name: "马努吉·巴尔加瓦", desc: "代数数论，扩展高斯的二次型理论。" },
+        { year: "2014", name: "马丁·海尔", desc: "随机偏微分方程理论。" },
+        { year: "2014", name: "玛丽亚姆·米尔扎哈尼", desc: "黎曼曲面及其模空间的动力学和几何学。" },
+        { year: "2010", name: "埃隆·林登施特劳斯", desc: "遍历理论及其在数论中的应用。" },
+        { year: "2010", name: "吴宝珠", desc: "证明朗兰兹纲领中的基本引理。" },
+        { year: "2010", name: "斯坦尼斯拉夫·斯米尔诺夫", desc: "统计物理学和二维数学物理。" },
+        { year: "2010", name: "塞德里克·维拉尼", desc: "玻尔兹曼方程和熵的数学理论。" },
+        { year: "2006", name: "安德烈·奥昆科夫", desc: "概率论、表示论和代数几何的联系。" },
+        { year: "2006", name: "格里戈里·佩雷尔曼", desc: "几何学和对流形结构的理解（庞加莱猜想）。" },
+        { year: "2006", name: "陶哲轩", desc: "偏微分方程、组合数学、堆垒数论和分析学。" },
+        { year: "2006", name: "温德林·维尔纳", desc: "随机共形不变性、布朗运动。" },
+        { year: "2002", name: "洛朗·拉福格", desc: "朗兰兹纲领的函数域方面。" },
+        { year: "2002", name: "弗拉基米尔·沃沃德斯基", desc: "新的同伦论，动机上同调理论。" },
+        { year: "1998", name: "理查德·博彻兹", desc: "李代数、魔群和自守形式。" },
+        { year: "1998", name: "威廉·蒂莫西·高尔斯", desc: "巴拿赫空间理论和组合数学。" },
+        { year: "1998", name: "马克西姆·孔采维奇", desc: "代数几何、纽结理论和量子场论。" },
+        { year: "1998", name: "柯蒂斯·麦克马伦", desc: "复动力学、双曲几何和三维流形。" },
+        { year: "1994", name: "让·布尔甘", desc: "巴拿赫空间几何、调和分析和偏微分方程。" },
+        { year: "1994", name: "皮埃尔-路易·利翁斯", desc: "非线性偏微分方程理论及应用。" },
+        { year: "1994", name: "让-克里斯托夫·约科兹", desc: "动力系统，特别是小分母理论。" },
+        { year: "1994", name: "叶菲姆·泽尔曼诺夫", desc: "李代数和群论，解决限制伯恩赛德问题。" },
+        { year: "1990", name: "弗拉基米尔·德林费尔德", desc: "量子群、霍普代数。" },
+        { year: "1990", name: "沃恩·琼斯", desc: "纽结理论，琼斯多项式。" },
+        { year: "1990", name: "森重文", desc: "代数三维分类。" },
+        { year: "1990", name: "爱德华·威滕", desc: "超弦理论的数学贡献，拓扑量子场论。" },
+        { year: "1986", name: "西蒙·唐纳森", desc: "四维流形几何。" },
+        { year: "1986", name: "格尔德·法尔廷斯", desc: "算术代数几何，莫德尔猜想。" },
+        { year: "1986", name: "迈克尔·弗里德曼", desc: "四维流形的庞加莱猜想。" },
+        { year: "1982", name: "阿兰·孔涅", desc: "算子代数，因子分类。" },
+        { year: "1982", name: "威廉·瑟斯顿", desc: "三维流形几何。" },
+        { year: "1982", name: "丘成桐", desc: "偏微分方程、相对论和拓扑学，卡拉比猜想。" },
+        { year: "1978", name: "皮埃尔·德利涅", desc: "算术代数几何，韦伊猜想。" },
+        { year: "1978", name: "查尔斯·费弗曼", desc: "调和分析、多复变函数。" },
+        { year: "1978", name: "格里戈里·马古利斯", desc: "李群离散子群，刚性理论。" },
+        { year: "1978", name: "丹尼尔·奎伦", desc: "K理论，同调代数。" },
+        { year: "1974", name: "恩里科·邦比耶里", desc: "数论、代数几何，大筛法。" },
+        { year: "1974", name: "大卫·芒福德", desc: "代数几何，参量和模空间。" },
+        { year: "1970", name: "艾伦·贝克", desc: "超越数理论。" },
+        { year: "1970", name: "广中平祐", desc: "代数簇奇点解消。" },
+        { year: "1970", name: "谢尔盖·诺维科夫", desc: "拓扑学和微分几何。" },
+        { year: "1970", name: "约翰·汤普森", desc: "有限单群。" },
+        { year: "1966", name: "迈克尔·阿蒂亚", desc: "K理论和指标定理。" },
+        { year: "1966", name: "保罗·科恩", desc: "连续统假设的独立性。" },
+        { year: "1966", name: "亚历山大·格罗滕迪克", desc: "代数几何。" },
+        { year: "1966", name: "斯蒂芬·斯梅尔", desc: "微分拓扑，庞加莱猜想高维证明。" },
+        { year: "1962", name: "拉尔斯·霍尔曼德尔", desc: "线性偏微分算子。" },
+        { year: "1962", name: "约翰·米尔诺", desc: "微分拓扑，七维球面上的怪球结构。" },
+        { year: "1958", name: "克劳斯·罗斯", desc: "丢番图逼近。" },
+        { year: "1958", name: "勒内·托姆", desc: "微分拓扑，配边理论。" },
+        { year: "1954", name: "小平邦彦", desc: "复流形和代数几何。" },
+        { year: "1954", name: "让-皮埃尔·塞尔", desc: "谱序列和球面的同伦群。" },
+        { year: "1950", name: "洛朗·施瓦茨", desc: "分布理论。" },
+        { year: "1950", name: "阿特勒·塞尔伯格", desc: "数论和离散群。" },
+        { year: "1936", name: "拉尔斯·阿尔福斯", desc: "复分析，黎曼曲面。" },
+        { year: "1936", name: "杰西·道格拉斯", desc: "普拉托问题（极小曲面）。" }
+    ];
+
+    // 渲染函数
+    function renderTable(data, tableId) {
+        const tbody = document.querySelector(`#${tableId} tbody`);
+        let html = '';
+        data.forEach(item => {
+            html += `<tr>
+                <td class="col-year">${item.year}</td>
+                <td class="col-name">${item.name}</td>
+                <td class="col-desc">${item.desc}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    }
+
+    // Tab 切换函数
+    function switchTab(tab) {
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+
+        document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
+        if(tab === 'abel') document.getElementById('abel-container').classList.add('active');
+        else document.getElementById('fields-container').classList.add('active');
+    }
+
+    // 初始化
+    renderTable(abelData, 'abel-table');
+    renderTable(fieldsData, 'fields-table');
+
+</script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>脚本导航中心</title>
+  <script src="脚本_nav-config.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(to bottom, #000428 0%, #004e92 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 星空背景 */
+    .stars {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      background-image: 
+        radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1px 1px at 50px 50px, rgba(255,255,255,0.8), transparent);
+      background-repeat: repeat;
+      background-size: 200px 200px;
+      animation: stars 120s linear infinite;
+      opacity: 0.8;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes stars {
+      from { transform: translateY(0); }
+      to { transform: translateY(-200px); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 5px;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .nav-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-bottom: 70px;
+    }
+
+    .dual-card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      min-height: 70px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dual-card:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .tool-item {
+      flex: 1;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .tool-item:first-child {
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .tool-icon { font-size: 1.5rem; margin-bottom: 4px; }
+    .tool-name { font-size: 0.85rem; font-weight: bold; color: white; margin-bottom: 2px; }
+    .tool-desc { font-size: 0.65rem; color: rgba(255, 255, 255, 0.6); }
+
+    .pagination {
+      position: fixed;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      padding: 8px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .page-btn {
+      padding: 5px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    .page-btn:hover { background: rgba(255, 255, 255, 0.2); }
+    .page-btn.active {
+      background: linear-gradient(45deg, #00ffff, #ff00ff);
+      border-color: transparent;
+    }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    @media (max-width: 600px) {
+      .nav-grid { gap: 10px; }
+      .dual-card { min-height: 60px; }
+      .tool-icon { font-size: 1.2rem; }
+      .tool-name { font-size: 0.75rem; }
+      .tool-desc { font-size: 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stars"></div>
+
+  <div class="container">
+    <header>
+      <h1>👻 脚本导航中心</h1>
+      <p>精选实用工具，一键直达</p>
+    </header>
+
+    <div class="nav-grid" id="navGrid"></div>
+
+    <div class="pagination" id="pagination">
+      <button class="page-btn" id="prevBtn">‹</button>
+      <div id="pageNumbers"></div>
+      <button class="page-btn" id="nextBtn">›</button>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    const itemsPerPage = 8;
+    let allTools = [];
+
+    // 页面加载完成后立即执行
+    window.onload = function() {
+      if (window.navConfig && window.navConfig.getAllTools) {
+        allTools = window.navConfig.getAllTools();
+        render();
+      }
+    };
+
+    function render() {
+      const navGrid = document.getElementById('navGrid');
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const pageTools = allTools.slice(start, end);
+
+      // 两两组合成卡片
+      const groups = [];
+      for (let i = 0; i < pageTools.length; i += 2) {
+        groups.push({
+          left: pageTools[i],
+          right: pageTools[i + 1] || null
+        });
+      }
+
+      navGrid.innerHTML = groups.map(group => {
+        let html = '<div class="dual-card">';
+        if (group.left) {
+          html += `
+            <div class="tool-item" onclick="window.location.href='${group.left.file}'">
+              <span class="tool-icon">${group.left.icon}</span>
+              <span class="tool-name">${group.left.name}</span>
+              <span class="tool-desc">${group.left.description}</span>
+            </div>`;
+        }
+        if (group.right) {
+          html += `
+            <div class="tool-item" onclick="window.location.href='${group.right.file}'">
+              <span class="tool-icon">${group.right.icon}</span>
+              <span class="tool-name">${group.right.name}</span>
+              <span class="tool-desc">${group.right.description}</span>
+            </div>`;
+        }
+        html += '</div>';
+        return html;
+      }).join('');
+
+      renderPagination();
+    }
+
+    function renderPagination() {
+      const total = Math.ceil(allTools.length / itemsPerPage);
+      if (total <= 1) {
+        document.getElementById('pagination').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('pagination').style.display = 'flex';
+      document.getElementById('prevBtn').disabled = currentPage === 1;
+      document.getElementById('nextBtn').disabled = currentPage === total;
+
+      const pageNumbers = document.getElementById('pageNumbers');
+      pageNumbers.innerHTML = '';
+      for (let i = 1; i <= total; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'page-btn';
+        if (i === currentPage) btn.classList.add('active');
+        btn.textContent = i;
+        btn.onclick = () => { currentPage = i; render(); };
+        pageNumbers.appendChild(btn);
+      }
+    }
+
+    document.getElementById('prevBtn').onclick = () => {
+      if (currentPage > 1) { currentPage--; render(); }
+    };
+
+    document.getElementById('nextBtn').onclick = () => {
+      const total = Math.ceil(allTools.length / itemsPerPage);
+      if (currentPage < total) { currentPage++; render(); }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS源码导航</title>
+    <style>
+        /* ===== 基础重置 ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===== 页面主体 - 流体渐变背景 ===== */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            /* 保留原版的漂亮渐变色 */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* ===== 粒子背景 ===== */
+        .particles {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0;
+        }
+        .particle {
+            position: absolute; background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%; animation: floatUp 10s infinite linear;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        /* ===== 布局容器 ===== */
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 600px; /* 限制最大宽度，保持两列整齐 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ===== 标题 ===== */
+        h1.title {
+            color: white;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 30px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            letter-spacing: 2px;
+            text-align: center;
+            animation: fadeInDown 1s ease;
+        }
+
+        /* ===== 导航网格 (核心：一行两个) ===== */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 强制两列 */
+            gap: 15px;
+            width: 100%;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        /* ===== 卡片样式 ===== */
+        .nav-card {
+            background: rgba(255, 255, 255, 0.15); /* 毛玻璃半透明 */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 25px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .nav-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .nav-card:active {
+            transform: scale(0.95);
+        }
+
+        /* 卡片图标 */
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        /* 卡片文字 */
+        .card-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* 动画关键帧 */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 480px) {
+            h1.title { font-size: 1.5rem; margin-bottom: 20px; }
+            .nav-grid { gap: 10px; }
+            .nav-card { padding: 20px 5px; }
+            .card-icon { font-size: 2rem; }
+            .card-name { font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 粒子背景层 -->
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <h1 class="title">JS源码中心</h1>
+        
+        <!-- 导航网格 -->
+        <div class="nav-grid" id="navGrid"></div>
+    </div>
+
+    <!-- 引入配置 -->
+    <script src="JS源码导航.js"></script>
+    
+    <script>
+        (function() {
+            // 1. 生成粒子背景
+            const particleContainer = document.getElementById('particles');
+            for (let i = 0; i < 20; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 5 + 2 + 'px';
+                p.style.width = size;
+                p.style.height = size;
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                p.style.animationDelay = (Math.random() * 5) + 's';
+                particleContainer.appendChild(p);
+            }
+
+            // 2. 渲染导航
+            const grid = document.getElementById('navGrid');
+            let tools = [];
+
+            // 获取配置
+            if (window.triangleNavConfig && window.triangleNavConfig.getAllTools) {
+                tools = window.triangleNavConfig.getAllTools();
+            }
+
+            // 生成HTML
+            if (tools.length > 0) {
+                grid.innerHTML = tools.map(tool => `
+                    <div class="nav-card" onclick="location.href='${tool.file}'">
+                        <div class="card-icon">${tool.icon}</div>
+                        <div class="card-name">${tool.name}</div>
+                    </div>
+                `).join('');
+            } else {
+                grid.innerHTML = '<div style="grid-column: span 2; color:white; text-align:center; padding:20px;">暂无工具配置</div>';
+            }
+        })();
+    </script>
+</body>
+</html>

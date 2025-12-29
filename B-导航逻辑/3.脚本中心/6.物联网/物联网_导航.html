@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物联网中心</title>
+
+<!-- 保留配置文件引用 -->
+<script src="物联网_nav-config.js"></script>
+
+<style>
+/* ================= 基础样式 & 新背景 ================= */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    min-height: 100vh; overflow-x: hidden; position: relative;
+    /* 修改1：新背景颜色 - 深邃蓝青渐变 */
+    background: linear-gradient(135deg, #051937 0%, #004d7a 50%, #008793 100%);
+    color: #ffffff;
+}
+
+.background { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+    /* 配合 body 的新背景 */
+    background: linear-gradient(135deg, #051937 0%, #004d7a 50%, #008793 100%);
+}
+
+.bg-pattern { 
+    position: absolute; width: 100%; height: 100%;
+    /* 修改背景光晕颜色以适配新主题 (青色/蓝色调) */
+    background-image: 
+        radial-gradient(circle at 20% 30%, rgba(0, 255, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(0, 100, 255, 0.15) 0%, transparent 50%);
+    animation: bgFloat 20s ease-in-out infinite;
+}
+
+@keyframes bgFloat {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    50% { transform: translate(-10px, -10px) rotate(1deg); }
+}
+
+.container { 
+    position: relative; z-index: 1; max-width: 500px; margin: 0 auto; 
+    padding: 15px; min-height: 100vh; display: flex; flex-direction: column;
+    padding-bottom: 80px;
+}
+
+header { 
+    text-align: center; margin-bottom: 25px;
+    animation: fadeInDown 0.8s ease;
+}
+
+header h1 { 
+    font-size: 1.8rem; font-weight: 700; margin-bottom: 5px;
+    /* 标题颜色改为蓝青色渐变 */
+    background: linear-gradient(135deg, #00f260, #0575e6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+header p { 
+    font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);
+}
+
+/* ================= 卡片样式修改 ================= */
+.nav-grid { 
+    display: grid; 
+    /* 保持一行三个 */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px; 
+    flex: 1; 
+    align-content: start; 
+    padding: 10px 0;
+    animation: fadeInUp 0.8s ease 0.2s both;
+}
+
+.tool-card { 
+    /* 修改2：去掉旋转，改为圆角正方形 */
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer; transition: all 0.3s ease;
+    position: relative; overflow: hidden; /* 用于定位序号 */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    aspect-ratio: 1; /* 保持正方形 */
+    border-radius: 12px; /* 圆角 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 新增：左上角序号样式 */
+.card-num {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: rgba(0, 255, 255, 0.6); /* 青色半透明 */
+    pointer-events: none; /* 防止遮挡点击 */
+}
+
+.tool-card-content {
+    /* 去掉反向旋转 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* 新的悬停效果：上浮 + 光晕 */
+.tool-card:hover { 
+    transform: translateY(-5px); 
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+    box-shadow: 0 8px 25px rgba(0, 135, 147, 0.4); /* 蓝色光晕 */
+    border-color: rgba(0, 255, 255, 0.5);
+}
+
+.tool-icon { 
+    font-size: 1.6rem; margin-bottom: 6px;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.tool-card:hover .tool-icon { 
+    transform: scale(1.15);
+}
+
+.tool-title { 
+    font-size: 0.75rem; font-weight: 600; color: #ffffff;
+    line-height: 1.2;
+    padding: 0 4px;
+}
+
+/* ================= 分页样式修改 (适配蓝青色主题) ================= */
+.pagination {
+    position: fixed;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+    background: rgba(5, 25, 55, 0.7); /* 深蓝背景 */
+    backdrop-filter: blur(10px);
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 255, 255, 0.3); /* 青色边框 */
+}
+
+.page-btn {
+    padding: 5px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.page-btn:hover { 
+    background: rgba(0, 255, 255, 0.3); 
+}
+
+.page-btn.active {
+    /* 激活状态改为青蓝渐变 */
+    background: linear-gradient(135deg, #00f260, #0575e6); 
+    border-color: transparent;
+    font-weight: bold;
+}
+
+.page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 400px) { 
+    header h1 { font-size: 1.6rem; } 
+    .nav-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } 
+    .tool-icon { font-size: 1.4rem; } 
+    .tool-title { font-size: 0.7rem; } 
+}
+</style>
+</head>
+<body>
+<div class="background">
+    <div class="bg-pattern"></div>
+</div>
+
+<div class="container">
+<header>
+    <h1>✨物联网中心</h1>
+    <p>精选实用工具，一键直达</p>
+</header>
+
+<div class="nav-grid" id="navGrid">
+    <!-- 工具卡片将在这里动态生成 -->
+</div>
+
+<div class="pagination" id="pagination">
+    <button class="page-btn" id="prevBtn">‹</button>
+    <div id="pageNumbers"></div>
+    <button class="page-btn" id="nextBtn">›</button>
+</div>
+</div>
+
+<script>
+    // ================= 逻辑部分保持不变，仅修改了 render 函数中的 HTML 生成部分 =================
+    let currentPage = 1;
+    const itemsPerPage = 9; 
+    let allTools = [];
+
+    window.onload = function() {
+        if (window.navConfig && window.navConfig.getAllTools) {
+            allTools = window.navConfig.getAllTools();
+            render();
+        } else {
+            console.error("配置文件未正确加载，请检查 服务_nav-config.js");
+            // 为了演示效果，如果配置文件不存在，我添加了一些模拟数据，这样你直接打开也能看到样式
+            if(allTools.length === 0) {
+                 for(let i=1; i<=25; i++) {
+                     allTools.push({ name: '测试服务 ' + i, icon: '🚀', file: '#' });
+                 }
+                 render();
+            }
+        }
+    };
+
+    function render() {
+        const navGrid = document.getElementById('navGrid');
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageTools = allTools.slice(start, end);
+
+        // 渲染逻辑：
+        // 1. 去掉了 tool-card 的旋转 HTML 结构
+        // 2. 添加了 <div class="card-num"> 用于显示左上角序号
+        // 3. 计算全局序号: start + index + 1
+        navGrid.innerHTML = pageTools.map((tool, index) => {
+            const globalIndex = start + index + 1;
+            return `
+            <div class="tool-card" onclick="window.location.href='${tool.file}'">
+                <div class="card-num">${globalIndex}</div>
+                <div class="tool-card-content">
+                    <div class="tool-icon">${tool.icon || '🔧'}</div>
+                    <div class="tool-title">${tool.name}</div>
+                </div>
+            </div>
+        `}).join('');
+
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const total = Math.ceil(allTools.length / itemsPerPage);
+        if (total <= 1) {
+            document.getElementById('pagination').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('pagination').style.display = 'flex';
+        document.getElementById('prevBtn').disabled = currentPage === 1;
+        document.getElementById('nextBtn').disabled = currentPage === total;
+
+        const pageNumbers = document.getElementById('pageNumbers');
+        pageNumbers.innerHTML = '';
+        for (let i = 1; i <= total; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'page-btn';
+            if (i === currentPage) btn.classList.add('active');
+            btn.textContent = i;
+            btn.onclick = () => { currentPage = i; render(); };
+            pageNumbers.appendChild(btn);
+        }
+    }
+
+    document.getElementById('prevBtn').onclick = () => {
+        if (currentPage > 1) { currentPage--; render(); }
+    };
+
+    document.getElementById('nextBtn').onclick = () => {
+        const total = Math.ceil(allTools.length / itemsPerPage);
+        if (currentPage < total) { currentPage++; render(); }
+    };
+</script>
+</body>
+</html>

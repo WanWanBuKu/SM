@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3 人抢答器源码</title>
+    <!-- 引入缩放插件 (路径保持原样) -->
+    <script src="A.插件_横屏字体缩放.js"></script>
+    <style>
+        /* CSS 样式区域 - 针对紧凑显示进行了优化 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f7f7f7;
+            color: #333;
+            line-height: 1.5;
+            padding-bottom: 20px;
+        }
+
+        /* 图片容器 */
+        #banner-container {
+            width: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            max-height: 240px; /* 稍微减小了 banner 高度 */
+            overflow: hidden;
+        }
+
+        #banner-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        /* 内容区域 */
+        .content {
+            padding: 10px 8px; /* 减小了外层 padding */
+        }
+
+        .title {
+            font-size: 14px; /* 标题稍微调小一点 */
+            font-weight: 700;
+            margin-bottom: 10px;
+            padding-left: 4px;
+            border-left: 3px solid #007bff;
+        }
+
+        /* 工具栏 */
+        .code-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #252526;
+            border-radius: 4px 4px 0 0;
+            padding: 5px 8px; /* 减小内边距 */
+            color: #d4d4d4;
+            font-size: 11px;
+            border: 1px solid #3c3c3c;
+            border-bottom: none;
+        }
+
+        .lang-tag {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .lang-icon {
+            width: 14px;
+            height: 14px;
+            fill: #d4d4d4;
+        }
+
+        .copy-btn {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 3px 8px; /* 更小的按钮 */
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover { background: #1177bb; }
+        .copy-btn:active { background: #0d5585; }
+        .copy-btn.copied { background: #28a745; }
+
+        .copy-btn svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* 代码区域 - 核心修改部分：强制紧凑 */
+        .code-wrapper {
+            background: #1e1e1e;
+            border-radius: 0 0 4px 4px;
+            padding: 0;
+            overflow-x: auto;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            border: 1px solid #3c3c3c;
+            border-top: none;
+            /* 强制缩小文字和行高，参考第二个代码的风格 */
+            font-size: 11px !important; 
+        }
+
+        pre {
+            margin: 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            color: #d4d4d4;
+            font-size: 11px; /* 强制小字号 */
+            line-height: 13px; /* 强制小行高，关键修改 */
+            padding: 6px 0; /* 减少上下内边距 */
+        }
+
+        .line {
+            display: flex;
+            min-height: 13px; /* 匹配行高 */
+            font-size: 11px; /* 确保行内元素也是小字 */
+        }
+
+        .line:hover { background: #2a2d2e; }
+
+        .ln {
+            min-width: 28px; /* 缩窄行号列宽度 */
+            text-align: right;
+            padding-right: 8px;
+            margin-right: 8px;
+            padding-left: 4px;
+            color: #858585;
+            user-select: none;
+            border-right: 1px solid #3c3c3c;
+            font-size: 10px; /* 行号更小一点 */
+            line-height: 13px;
+        }
+
+        .cl {
+            padding-left: 4px;
+            white-space: pre;
+            word-break: break-all;
+        }
+
+        /* 语法高亮类 */
+        .k { color: #569cd6; } /* keyword */
+        .t { color: #4ec9b0; } /* type */
+        .f { color: #dcdcaa; } /* function */
+        .v { color: #9cdcfe; } /* variable */
+        .s { color: #ce9178; } /* string */
+        .c { color: #6a9955; } /* comment */
+        .n { color: #b5cea8; } /* number */
+        .m { color: #c586c0; } /* macro */
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #28a745;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 3px;
+            font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="banner-container">
+        <img id="banner-img" alt="Header Image">
+    </div>
+
+    <div class="content">
+        <h2 id="page-title" class="title"></h2>
+
+        <div class="code-toolbar">
+            <div class="lang-tag">
+                <svg class="lang-icon" viewBox="0 0 16 16">
+                    <path d="M2.5 2L1 5v9h3v2h2l2-2h2.5L14 8V2H2.5zm11 5.5L13 10H9.5L8 11.5V10H4V3h9.5v4.5z"/>
+                    <path d="M10 5.5v3h1.5v-3H10zm-3 0v3h1.5v-3H7z"/>
+                </svg>
+                <span>Arduino</span>
+            </div>
+            <button id="copy-btn" class="copy-btn">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                </svg>
+                复制代码
+            </button>
+        </div>
+
+        <div class="code-wrapper">
+            <pre id="code-block"></pre>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">✓代码已复制</div>
+
+    <script>
+        // 1. 纯净的数据区域：只有原始代码，没有HTML 烂摊子
+        const pageData = {
+            title: "Wokwi 3 人抢答器源码",
+            imageUrl: "https://picx.zhimg.com/100/v2-a845e0d0fb724bfa3099631805c3b344_r.jpeg?source=7e7ef6e2&needBackground=1&rawwidth=2376&rawheight=1080&customSceneCode=image_viewer",
+            // 这里只存纯文本代码，想改代码直接改这里，不用管格式化
+            rawCode: `int redled=8; // 定义红色LED 连接到数字引脚8
+int yellowled=7; // 定义黄色LED 连接到数字引脚7
+int greenled=6; // 定义绿色LED 连接到数字引脚6
+int redpin=5; // 定义红色按键连接到数字引脚5
+int yellowpin=4; // 定义黄色按键连接到数字引脚4
+int greenpin=3; // 定义绿色按键连接到数字引脚3
+int restpin=2; // 定义复位按键连接到数字引脚2
+int red; // 定义变量存储红色按键状态
+int yellow; // 定义变量存储黄色按键状态
+int green; // 定义变量存储绿色按键状态
+
+void setup() // 初始化函数，程序启动时执行一次
+{
+  pinMode(redled,OUTPUT); // 设置红色LED 引脚为输出模式
+  pinMode(yellowled,OUTPUT); // 设置黄色LED 引脚为输出模式
+  pinMode(greenled,OUTPUT); // 设置绿色LED 引脚为输出模式
+  pinMode(redpin,INPUT); // 设置红色按键引脚为输入模式
+  pinMode(yellowpin,INPUT); // 设置黄色按键引脚为输入模式
+  pinMode(greenpin,INPUT); // 设置绿色按键引脚为输入模式
+}
+
+void loop() // 主循环函数，程序会不断重复执行
+{
+  red=digitalRead(redpin); // 读取红色按键状态
+  yellow=digitalRead(yellowpin); // 读取黄色按键状态
+  green=digitalRead(greenpin); // 读取绿色按键状态
+  if(red==LOW)RED_YES(); // 如果红色按键按下，调用红灯函数
+  if(yellow==LOW)YELLOW_YES(); // 如果黄色按键按下，调用黄灯函数
+  if(green==LOW)GREEN_YES(); // 如果绿色按键按下，调用绿灯函数
+}
+
+void RED_YES() // 红灯控制函数
+{
+  while(digitalRead(restpin)==1) // 当复位按键未按下时循环
+  {
+    digitalWrite(redled,HIGH); // 点亮红色LED
+    digitalWrite(greenled,LOW); // 熄灭绿色LED
+    digitalWrite(yellowled,LOW); // 熄灭黄色LED
+  }
+  clear_led(); // 清除LED 状态
+}
+
+void YELLOW_YES() // 黄灯控制函数
+{
+  while(digitalRead(restpin)==1) // 当复位按键未按下时循环
+  {
+    digitalWrite(redled,LOW); // 熄灭红色LED
+    digitalWrite(greenled,LOW); // 熄灭绿色LED
+    digitalWrite(yellowled,HIGH); // 点亮黄色LED
+  }
+  clear_led(); // 清除LED 状态
+}
+
+void GREEN_YES() // 绿灯控制函数
+{
+  while(digitalRead(restpin)==1) // 当复位按键未按下时循环
+  {
+    digitalWrite(redled,LOW); // 熄灭红色LED
+    digitalWrite(yellowled,LOW); // 熄灭黄色LED
+    digitalWrite(greenled,HIGH); // 点亮绿色LED
+  }
+  clear_led(); // 清除LED 状态
+}
+
+void clear_led() // 清除所有LED 状态的函数
+{
+  digitalWrite(redled,LOW); // 熄灭红色LED
+  digitalWrite(yellowled,LOW); // 熄灭黄色LED
+  digitalWrite(greenled,LOW); // 熄灭绿色LED
+  while(digitalRead(restpin)==0); // 等待复位按键松开
+  delay(20); // 延时消抖
+}`
+        };
+
+        // 2. 简单的高亮解析器：把代码转换成HTML
+        function highlightCode(code) {
+            const lines = code.split('\n');
+            return lines.map((line, index) => {
+                let html = line
+                    // 注释(放在最后处理，避免干扰)
+                    .replace(/(\/\/.*)/g, '<span class="c">$1</span>')
+                    // 关键字
+                    .replace(/\b(void|int|if|else|while|return|for|switch|case|break|default)\b/g, '<span class="k">$1</span>')
+                    // 类型/宏常量
+                    .replace(/\b(HIGH|LOW|INPUT|OUTPUT|INPUT_PULLUP)\b/g, '<span class="t">$1</span>')
+                    // 函数调用
+                    .replace(/\b(pinMode|digitalRead|digitalWrite|delay|Serial|begin|println|print)\b/g, '<span class="f">$1</span>')
+                    // 数字
+                    .replace(/\b(\d+)\b/g, '<span class="n">$1</span>');
+                
+                return `<span class="line"><span class="ln">${index + 1}</span><span class="cl">${html}</span></span>`;
+            }).join('');
+        }
+
+        // 3. 复制功能
+        function copyCode() {
+            if (!pageData.rawCode) return;
+            navigator.clipboard.writeText(pageData.rawCode).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '已复制';
+                btn.classList.add('copied');
+                
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('copied');
+                    toast.classList.remove('show');
+                }, 2000);
+            });
+        }
+
+        // 4. 页面初始化逻辑
+        function initPage() {
+            // 设置图片
+            const imgEl = document.getElementById('banner-img');
+            if (imgEl && pageData.imageUrl) imgEl.src = pageData.imageUrl;
+
+            // 设置标题
+            const titleEl = document.getElementById('page-title');
+            if (titleEl && pageData.title) titleEl.textContent = pageData.title;
+
+            // 自动渲染代码（这才是完美的逻辑）
+            const codeBlock = document.getElementById('code-block');
+            if (codeBlock && pageData.rawCode) {
+                codeBlock.innerHTML = highlightCode(pageData.rawCode);
+            }
+
+            // 绑定复制事件
+            const copyBtn = document.getElementById('copy-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', copyCode);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html>

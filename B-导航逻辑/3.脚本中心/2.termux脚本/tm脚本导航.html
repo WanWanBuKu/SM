@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TM脚本中心</title>
+    <style>
+        /* ----- 基础重置 ----- */
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            min-height: 100vh; 
+            /* 
+               === 高级深翡翠绿渐变 ===
+               从极深的墨绿过渡到富有生机的深绿，干净不刺眼
+            */
+            background: linear-gradient(135deg, #021a12 0%, #065f46 100%); 
+            color: #ecfdf5;
+            padding: 15px;
+        }
+
+        /* ----- 头部 ----- */
+        header { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        
+        h1 { 
+            font-size: 1.2rem; 
+            font-weight: 700; 
+            color: #fff; 
+            margin-bottom: 4px; 
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.4); /* 淡淡的绿色光晕 */
+        }
+        
+        .subtitle { font-size: 0.75rem; color: #a7f3d0; opacity: 0.9; letter-spacing: 0.5px; }
+
+        /* ----- 列表区域 (一行3列) ----- */
+        .nav-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 8px; 
+            max-width: 800px; 
+            margin: 0 auto; 
+        }
+
+        /* ----- 卡片样式 (垂直居中) ----- */
+        .card { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; /* 核心：垂直居中 */
+            
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 8px; 
+            padding: 5px; /* 内边距减小，依靠居中控制位置 */
+            text-decoration: none; 
+            color: inherit; 
+            height: 95px; /* 固定高度，确保居中效果稳定 */
+            transition: background-color 0.1s; 
+        }
+
+        /* 点击反馈 */
+        .card:active { 
+            background: rgba(255, 255, 255, 0.15); 
+            transform: scale(0.96); 
+        }
+
+        .icon { 
+            font-size: 1.6rem; 
+            margin-bottom: 4px; /* 稍微拉开一点距离 */
+            line-height: 1; 
+        }
+        
+        .name { 
+            font-size: 0.75rem; 
+            font-weight: 600; 
+            color: #fff; 
+            text-align: center; 
+            width: 100%; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+        }
+        
+        .desc { 
+            /* 考虑到居中布局且高度较小，描述如果显示两行会破坏居中感，这里改为只显示一行或隐藏 */
+            /* 为了保持简洁，我将其设置为极小字体且只显示一行，或者如果觉得挤可以 display: none */
+            font-size: 0.6rem; 
+            color: #6ee7b7; 
+            text-align: center; 
+            width: 100%; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            margin-top: 2px;
+        }
+
+        .error-msg { 
+            grid-column: 1 / -1; 
+            text-align: center; 
+            color: #fca5a5; 
+            margin-top: 30px; 
+            font-size: 0.8rem; 
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🌲 TM脚本中心</h1>
+        <p class="subtitle">精选实用工具，一键直达</p>
+    </header>
+
+    <main id="gridContainer" class="nav-grid">
+        <!-- JS 动态填充 -->
+    </main>
+
+    <!-- 引入配置文件 -->
+    <script src="termux_nav-config.js"></script>
+
+    <script>
+        // 立即执行函数，无等待
+        (function() {
+            const container = document.getElementById('gridContainer');
+
+            function render() {
+                if (!window.navConfig || !window.navConfig.getAllTools) {
+                    container.innerHTML = '<div class="error-msg">错误：未加载到 termux_nav-config.js</div>';
+                    return;
+                }
+
+                const tools = window.navConfig.getAllTools();
+
+                const html = tools.map(tool => `
+                    <a href="${tool.file}" class="card">
+                        <div class="icon">${tool.icon || '🔧'}</div>
+                        <div class="name" title="${tool.name}">${tool.name}</div>
+                        <div class="desc">${tool.description || '...'}</div>
+                    </a>
+                `).join('');
+
+                container.innerHTML = html;
+            }
+
+            render();
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日记中心</title>
+    <script src="/A2_全局中心/B_插件工具/1.插件_主页跳转.js"></script>
+    <script src="日记-config.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom, #1e3c72 0%, #2a5298 40%, #f4a460 80%, #ff8c00 100%);
+            min-height: 100vh; padding: 10px; position: relative; overflow-x: hidden;
+        }
+
+        /* ===== 背景装饰 ===== */
+        .city-skyline { position: fixed; inset: 0; pointer-events: none; z-index: -1; }
+        .sky-gradient { position: absolute; inset: 0 0 30% 0; background: linear-gradient(to bottom, #1e3c72 0%, #2a5298 20%, #7e8ba3 50%, #f4a460 80%, #ff8c00 100%); }
+        .buildings { position: absolute; bottom: 0; left: 0; width: 100%; height: 60%; background: #1a1a2e; clip-path: polygon(0% 100%, 0% 45%, 5% 45%, 5% 35%, 10% 35%, 10% 45%, 15% 45%, 15% 25%, 20% 25%, 20% 45%, 25% 45%, 25% 35%, 30% 35%, 30% 45%, 35% 45%, 35% 20%, 40% 20%, 40% 45%, 45% 45%, 45% 30%, 50% 30%, 50% 45%, 55% 45%, 55% 38%, 60% 38%, 60% 45%, 65% 45%, 65% 28%, 70% 28%, 70% 45%, 75% 45%, 75% 33%, 80% 33%, 80% 45%, 85% 45%, 85% 42%, 90% 42%, 90% 45%, 95% 45%, 95% 25%, 100% 25%, 100% 100%); }
+
+        .window { position: absolute; background: #ffeb3b; animation: flicker 4s infinite; }
+        @keyframes flicker { 0%, 100% { opacity: .8; } 50% { opacity: .3; } }
+        .star { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: twinkle 3s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+        .cloud { position: absolute; background: rgba(255,255,255,.4); border-radius: 100px; opacity: .8; animation: float 20s infinite linear; }
+        @keyframes float { from { transform: translateX(-200px); } to { transform: translateX(calc(100vw + 200px)); } }
+
+        /* ===== 布局 ===== */
+        .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+        header { text-align: center; margin-bottom: 20px; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,.5); }
+        h1 { font-size: 2rem; letter-spacing: 2px; }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        /* ===== 卡片：真正居中 + 无底部空隙 ===== */
+        .tool-card {
+            position: relative;          /* 序号绝对定位参照 */
+            background: rgba(255,255,255,.9);
+            border-radius: 10px;
+            padding: 10px 5px;           /* 上下相等，不留多余空白 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;         /* 水平居中 */
+            justify-content: center;     /* 垂直居中 */
+            text-align: center;
+            color: #333;
+            text-decoration: none;
+            transition: transform .2s;
+        }
+        .tool-card:hover { transform: translateY(-3px); background: #fff; }
+
+        .tool-number {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: #ff6b6b;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            line-height: 1;
+            z-index: 2;
+        }
+
+        .tool-icon { font-size: 2rem; }
+        .tool-name { font-size: .9rem; font-weight: bold; margin: 6px 0 4px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        .tool-description { font-size: .7rem; color: #666; line-height: 1.2; height: 2.4em; overflow: hidden; }
+
+        /* ===== 分页 ===== */
+        .pagination { display: flex; justify-content: center; gap: 5px; margin-top: 20px; }
+        .pagination button { border: none; background: rgba(255,255,255,.9); color: #333; padding: 5px 10px; border-radius: 4px; cursor: pointer; min-width: 30px; }
+        .pagination button.active { background: #4ecdc4; color: #fff; }
+        .pagination button:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* ===== 小屏兼容 ===== */
+        @media (max-width: 600px) {
+            .tools-grid { gap: 5px; }
+            .tool-card { padding: 8px 3px; }
+            .tool-icon { font-size: 1.5rem; }
+            .tool-name { font-size: .75rem; }
+            .tool-description { font-size: .6rem; }
+            .tool-number { font-size: 9px; padding: 1px 5px; }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 背景层 -->
+    <div class="city-skyline">
+        <div class="sky-gradient"></div>
+        <div class="buildings"></div>
+        <div id="windows"></div>
+        <div id="stars"></div>
+        <div id="clouds"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>🏙️ 日记中心</h1>
+            <p>记录都市生活的点点滴滴</p>
+        </header>
+
+        <main>
+            <div class="tools-grid" id="toolsGrid"></div>
+            <div class="pagination" id="pagination"></div>
+        </main>
+    </div>
+
+    <script>
+        /* ---------- 背景元素 ---------- */
+        function initBg() {
+            const winBox = document.createElement('div'); winBox.id = 'windows';
+            const starBox = document.createElement('div'); starBox.id = 'stars';
+            const cloudBox = document.createElement('div'); cloudBox.id = 'clouds';
+            document.querySelector('.city-skyline').append(winBox, starBox, cloudBox);
+
+            for (let i = 0; i < 40; i++) {
+                const w = document.createElement('div'); w.className = 'window';
+                w.style.width = `${Math.random() * 4 + 2}px`;
+                w.style.height = `${Math.random() * 4 + 2}px`;
+                w.style.left = `${Math.random() * 100}%`;
+                w.style.bottom = `${Math.random() * 60}%`;
+                w.style.animationDelay = `${Math.random() * 4}s`;
+                winBox.appendChild(w);
+            }
+            for (let i = 0; i < 20; i++) {
+                const s = document.createElement('div'); s.className = 'star';
+                s.style.left = `${Math.random() * 100}%`;
+                s.style.top = `${Math.random() * 100}%`;
+                starBox.appendChild(s);
+            }
+            for (let i = 0; i < 3; i++) {
+                const c = document.createElement('div'); c.className = 'cloud';
+                c.style.width = `${Math.random() * 60 + 80}px`;
+                c.style.height = `${Math.random() * 20 + 30}px`;
+                c.style.top = `${Math.random() * 50}%`;
+                c.style.animationDelay = `${i * 7}s`;
+                cloudBox.appendChild(c);
+            }
+        }
+
+        /* ---------- 数据 + 渲染 ---------- */
+        let currentPage = 1;
+        const toolsPerPage = 9;
+        let allTools = [];
+
+        // 如果外部 config 没加载，用演示数据保底
+        if (!window.toolsConfig) {
+            window.toolsConfig = {
+                getAllTools: () => Array.from({ length: 30 }, (_, i) => ({
+                    name: `日记项目 ${i + 1}`,
+                    description: i % 2 ? '详细记录了今天发生的有趣事情和感悟。' : '这是关于今天心情的简短记录。',
+                    icon: ['📝', '📅', '🏷️', '📌', '✨'][i % 5],
+                    file: '#'
+                }))
+            };
+        }
+
+        function render() {
+            const grid = document.getElementById('toolsGrid');
+            const pageCtrl = document.getElementById('pagination');
+            grid.innerHTML = '';
+            pageCtrl.innerHTML = '';
+
+            allTools = window.toolsConfig.getAllTools();
+            const total = allTools.length;
+            const maxPage = Math.ceil(total / toolsPerPage);
+            currentPage = Math.min(maxPage, Math.max(1, currentPage));
+
+            const start = (currentPage - 1) * toolsPerPage;
+            const toolsToShow = allTools.slice(start, start + toolsPerPage);
+
+            toolsToShow.forEach((tool, idx) => {
+                const globalIndex = start + idx + 1;
+                const card = document.createElement('a');
+                card.className = 'tool-card';
+                card.href = tool.file;
+                card.innerHTML = `
+                    <span class="tool-number">#${globalIndex}</span>
+                    <span class="tool-icon">${tool.icon}</span>
+                    <div class="tool-name">${tool.name}</div>
+                    <div class="tool-description">${tool.description}</div>
+                `;
+                grid.appendChild(card);
+            });
+
+            /* 分页按钮 */
+            if (maxPage > 1) {
+                const makeBtn = (text, disabled, handler) => {
+                    const b = document.createElement('button');
+                    b.textContent = text;
+                    b.disabled = disabled;
+                    b.addEventListener('click', handler);
+                    return b;
+                };
+                pageCtrl.appendChild(makeBtn('‹', currentPage === 1, () => { currentPage--; render(); }));
+                for (let i = 1; i <= maxPage; i++) {
+                    const btn = makeBtn(i, false, () => { currentPage = i; render(); });
+                    if (i === currentPage) btn.classList.add('active');
+                    pageCtrl.appendChild(btn);
+                }
+                pageCtrl.appendChild(makeBtn('›', currentPage === maxPage, () => { currentPage++; render(); }));
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initBg();
+            render();
+        });
+    </script>
+</body>
+</html>
